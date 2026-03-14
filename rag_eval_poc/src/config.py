@@ -25,19 +25,11 @@ class Config:
     EVALUATION_DIR = PROJECT_ROOT / "tests" / "evaluation"
 
     # LLM Provider Configuration (supports multiple providers)
-    LLM_PROVIDER = os.getenv("LLM_PROVIDER", "groq").lower()  # Options: "openai", "groq", "ollama"
-    
-    # OpenAI Configuration
-    OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
-    OPENAI_MODEL = "gpt-4o"
+    LLM_PROVIDER = os.getenv("LLM_PROVIDER", "groq").lower()
     
     # Groq Configuration (FREE - RECOMMENDED)
     GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
-    GROQ_MODEL = os.getenv("GROQ_MODEL", "mixtral-8x7b-32k")  # Fast & free model
-    
-    # Ollama Configuration (LOCAL - FREE)
-    OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
-    OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama2")
+    GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")  # Fast & free model
     
     # Temperature for all providers
     OPENAI_TEMPERATURE = 0.0
@@ -71,15 +63,9 @@ class Config:
         provider = Config.LLM_PROVIDER
         
         # Validate based on selected provider
-        if provider == "openai":
-            if not Config.OPENAI_API_KEY:
-                raise ValueError("OPENAI_API_KEY environment variable is not set. Get one at: https://platform.openai.com")
-        elif provider == "groq":
+        if provider == "groq":
             if not Config.GROQ_API_KEY:
                 raise ValueError("GROQ_API_KEY environment variable is not set. Get a free key at: https://console.groq.com")
-        elif provider == "ollama":
-            # Ollama doesn't need API key, but URL must be accessible
-            pass
         else:
             raise ValueError(f"Invalid LLM_PROVIDER: {provider}. Use: openai, groq, or ollama")
 

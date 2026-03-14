@@ -1,25 +1,71 @@
 # RAG Bot LLM Evaluation POC - README
 
-## Quick Start (2 minutes)
+## ✨ NEW: Evaluation Now in Streamlit UI!
+
+Evaluation is fully integrated into the interactive Streamlit application. No need to run CLI scripts anymore!
+
+### Quick Start (5 minutes)
 
 ```bash
-# 1. Check environment
-python --version  # Should be 3.8+
-pip list | grep -E "deepeval|langchain|groq|chromadb"
+# 1. Install dependencies
+pip install -r requirements.txt
 
-# 2. Set API key
-export GROQ_API_KEY="your_free_key_from_console.groq.com"
+# 2. Set Groq API key (for RAG bot - free)
+export GROQ_API_KEY="your_key_from_console.groq.com"
 
-# 3. Run demo (shows 3 examples)
-python demo.py
+# 3. Set OpenAI API key (for evaluation metrics - optional, ~$1-2 for full POC)
+export OPENAI_API_KEY="sk-your-key"
 
-# 4. Run full evaluation (takes ~15 minutes for 20 questions)
-python quick_eval.py
+# 4. Run Streamlit app
+streamlit run src/app.py
 
-# 5. View results
-cat tests/evaluation/evaluation_results_*.json
-cat tests/evaluation/evaluation_report_*.md
+# 5. In browser:
+# - Initialize AI in Chat tab
+# - Go to Evaluation tab
+# - Load test cases & run evaluations
+# - View interactive results dashboard
 ```
+
+### ⚠️ Important: LLM Judge Configuration
+
+**The evaluation metrics require an OpenAI API key** (or see [LLM_JUDGE_SETUP.md](LLM_JUDGE_SETUP.md) for alternatives).
+
+DeepEval uses an LLM to evaluate your bot's responses. The bot uses Groq (free), but metrics use OpenAI GPT-4o as a judge.
+
+**Cost:** ~$1-2 USD for evaluating all 20 test cases
+
+**Setup:** Add `OPENAI_API_KEY` to your `config/.env` file
+See [LLM_JUDGE_SETUP.md](LLM_JUDGE_SETUP.md) for detailed instructions.
+
+### Features
+
+**🧪 Evaluation in UI:**
+- Single test evaluation with detailed metrics
+- Batch evaluation with progress bar
+- Real-time results dashboard with charts
+- Export results as JSON
+- Filter tests by category
+- View retrieved context for each test
+
+**📊 4 DeepEval Metrics:**
+- Hallucination Detection (0 = pass)
+- Faithfulness (≥70% = pass)
+- Answer Relevancy (≥70% = pass)
+- Contextual Recall (≥60% = pass)
+
+**📚 20 Test Cases Included:**
+- 10 Straightforward
+- 5 Tricky
+- 5 Unanswerable
+
+### Documentation
+
+For detailed information, see:
+- **[QUICK_START.md](QUICK_START.md)** - 5-minute walkthrough
+- **[LLM_JUDGE_SETUP.md](LLM_JUDGE_SETUP.md)** - Configure evaluation metrics
+- **[EVALUATION.md](EVALUATION.md)** - Complete user guide
+- **[ARCHITECTURE.md](ARCHITECTURE.md)** - System design
+- **[EVALUATION_QUICK_REFERENCE.md](EVALUATION_QUICK_REFERENCE.md)** - Technical reference
 
 ## Project Structure
 
