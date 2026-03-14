@@ -36,8 +36,7 @@ rag_eval_poc/
 │   ├── config.py               # Configuration + API keys
 │   ├── validators.py           # Input validation
 │   └── data/
-│       └── documents/
-│           └── python_basics.txt  # Sample document (5000+ lines)
+│        └── python_basics.txt  # Sample document (5000+ lines)
 │
 ├── tests/
 │   ├── test_cases.yaml         # 20 evaluation questions (10+5+5)
@@ -236,7 +235,7 @@ export GROQ_API_KEY="gsk_your_key_here"
 
 ## Running on Your Own Documents
 
-1. Replace `src/data/documents/python_basics.txt` with your document
+1. Replace `src/data/python_basics.txt` with your document
 2. Update `tests/test_cases.yaml` with questions about your domain
 3. Run: `python quick_eval.py`
 

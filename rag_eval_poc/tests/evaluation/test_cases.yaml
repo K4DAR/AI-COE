@@ -1,0 +1,197 @@
+test_cases:
+  # ========== STRAIGHTFORWARD QUESTIONS (10) ==========
+  # These have clear answers directly in the documents
+  
+  - id: 1
+    category: straightforward
+    question: "What year was Python first released?"
+    expected_answer: "Python was first released in 1991"
+    source_context: "Chapter 1: It was created by Guido van Rossum and first released in 1991."
+    difficulty: easy
+    notes: "Direct fact from introduction"
+
+  - id: 2
+    category: straightforward
+    question: "Who created Python?"
+    expected_answer: "Guido van Rossum created Python"
+    source_context: "Chapter 1: It was created by Guido van Rossum and first released in 1991."
+    difficulty: easy
+    notes: "Straightforward factual question"
+
+  - id: 3
+    category: straightforward
+    question: "What are the two main number types in Python?"
+    expected_answer: "Integers and floats are the two main number types in Python"
+    source_context: "Chapter 3: Python supports two main number types: integers and floats."
+    difficulty: easy
+    notes: "Clear enumerated list"
+
+  - id: 4
+    category: straightforward
+    question: "How do you create a virtual environment in Python?"
+    expected_answer: "You create a virtual environment using the command: python -m venv myenv"
+    source_context: "Chapter 11: Create a virtual environment - python -m venv myenv"
+    difficulty: easy
+    notes: "Direct command shown in document"
+
+  - id: 5
+    category: straightforward
+    question: "What does the DRY principle stand for?"
+    expected_answer: "DRY stands for Don't Repeat Yourself"
+    source_context: "Chapter 10: DRY Principle: Don't Repeat Yourself - extract repeated code into functions"
+    difficulty: easy
+    notes: "Acronym definition"
+
+  - id: 6
+    category: straightforward
+    question: "Name three reasons why Python is popular?"
+    expected_answer: "Python is popular because: 1) It is easy to learn, 2) It is versatile, 3) It has a large community"
+    source_context: "Chapter 1: Easy to Learn, Versatile, and Large Community are listed as reasons"
+    difficulty: easy
+    notes: "Multiple choice from bulleted list"
+
+  - id: 7
+    category: straightforward
+    question: "What is the correct syntax for defining a function in Python?"
+    expected_answer: "Functions are defined using the def keyword followed by the function name and parentheses"
+    source_context: "Chapter 5: Functions are defined with the def keyword: def greet(name):"
+    difficulty: easy
+    notes: "Syntax question"
+
+  - id: 8
+    category: straightforward
+    question: "What are the three file modes for opening files in Python?"
+    expected_answer: "r (read), w (write), and a (append) are the three main file modes"
+    source_context: "Chapter 6: File Modes - r (read), w (write), a (append)"
+    difficulty: easy
+    notes: "Enumerated list from document"
+
+  - id: 9
+    category: straightforward
+    question: "What is the minimum RAM requirement for Python installation?"
+    expected_answer: "The minimum RAM requirement is 512 MB for basic use"
+    source_context: "Chapter 2: RAM: 512 MB for basic use, 2GB or more recommended"
+    difficulty: easy
+    notes: "System requirement specification"
+
+  - id: 10
+    category: straightforward
+    question: "What does the 'with' statement do when working with files?"
+    expected_answer: "The 'with' statement ensures that files are properly closed after use"
+    source_context: "Chapter 6: Always use the with statement to ensure files are properly closed."
+    difficulty: easy
+    notes: "Best practice explanation"
+
+  # ========== TRICKY QUESTIONS (5) ==========
+  # These require combining information or inference
+  
+  - id: 11
+    category: tricky
+    question: "If you need to read a PDF file in Python, what would be the appropriate approach combining chapters 6 and the document?"
+    expected_answer: "You would use a PDF library in binary mode with 'rb' parameter to handle the binary data appropriately"
+    source_context: "Chapter 6 mentions binary mode: b (binary mode for images, PDFs, etc.). This requires inference that PDF files need binary mode."
+    difficulty: medium
+    notes: "Requires connecting file operations with PDF format knowledge"
+
+  - id: 12
+    category: tricky
+    question: "What is the relationship between virtual environments and the requirements.txt file in a Python project?"
+    expected_answer: "Virtual environments provide isolated Python installations, and requirements.txt lists the packages installed in that environment for reproducibility"
+    source_context: "Chapter 11 describes virtual environments, Chapter 12 explains requirements.txt and pip freeze command creates it"
+    difficulty: medium
+    notes: "Requires understanding workflow across multiple chapters"
+
+  - id: 13
+    category: tricky
+    question: "Why might using a list comprehension be better than a regular loop according to the document?"
+    expected_answer: "List comprehensions are more efficient and use less memory than regular loops for creating lists"
+    source_context: "Chapter 10: Use list comprehensions instead of loops, and Chapter 10 Performance Tips mention memory efficiency"
+    difficulty: medium
+    notes: "Requires understanding performance concepts"
+
+  - id: 14
+    category: tricky
+    question: "If you have a function that needs to accept any number of arguments, what Python feature should you use?"
+    expected_answer: "You should use variable-length arguments with the *args syntax"
+    source_context: "Chapter 5: Variable-Length Arguments - def sum_all(*numbers):"
+    difficulty: medium
+    notes: "Requires specific Python knowledge application"
+
+  - id: 15
+    category: tricky
+    question: "How would you ensure your Python code follows community standards?"
+    expected_answer: "You should follow PEP 8, which is Python's official style guide"
+    source_context: "Chapter 10: Follow PEP 8: Python's official style guide for consistent formatting"
+    difficulty: medium
+    notes: "Requires inference of best practices"
+
+  # ========== UNANSWERABLE QUESTIONS (5) ==========
+  # These cannot be answered from the provided documents
+  
+  - id: 16
+    category: unanswerable
+    question: "What is the current version number of Python as of 2024?"
+    expected_answer: "This information is not available in the provided document"
+    source_context: "not_in_documents"
+    difficulty: hard
+    notes: "Document is timeless reference material"
+
+  - id: 17
+    category: unanswerable
+    question: "Which Python web framework (Django or Flask) is better for building REST APIs?"
+    expected_answer: "This comparison is not covered in the document"
+    source_context: "not_in_documents"
+    difficulty: hard
+    notes: "Document focuses on basics, not frameworks"
+
+  - id: 18
+    category: unanswerable
+    question: "What is the most popular IDE used by professional Python developers in 2024?"
+    expected_answer: "While IDEs are mentioned, no statistics on popularity are provided"
+    source_context: "not_in_documents"
+    difficulty: hard
+    notes: "Document mentions IDEs but doesn't compare popularity"
+
+  - id: 19
+    category: unanswerable
+    question: "How much does PyCharm Professional Edition cost?"
+    expected_answer: "The document mentions PyCharm but does not provide pricing information"
+    source_context: "not_in_documents"
+    difficulty: hard
+    notes: "Pricing not covered in educational document"
+
+  - id: 20
+    category: unanswerable
+    question: "What are the salary expectations for Python developers in the United States?"
+    expected_answer: "This career information is not available in the provided document"
+    source_context: "not_in_documents"
+    difficulty: hard
+    notes: "Document focuses on technical content, not career info"
+
+evaluation_parameters:
+  retriever_k: 3
+  chunk_size: 500
+  overlap: 100
+  temperature: 0.3
+  deepeval_metrics:
+    - Hallucination
+    - Faithfulness
+    - AnswerRelevancy
+    - ContextualRecall
+  deepeval_thresholds:
+    Hallucination: 0.0  # Should be 0 (no hallucination)
+    Faithfulness: 0.7   # At least 70% faithful
+    AnswerRelevancy: 0.7 # At least 70% relevant
+    ContextualRecall: 0.6 # At least 60% contextual recall
+
+notes: |
+  Test case structure:
+  - Straightforward (10): Clear answers directly in document
+  - Tricky (5): Require inference or combining multiple sections
+  - Unanswerable (5): Information not present in documents - should trigger "I don't know" responses
+  
+  For evaluation:
+  - Run each question through the RAG bot
+  - Capture both the bot's answer and the retrieved context
+  - Run DeepEval metrics on each answer
+  - Analyze which questions fail and why
