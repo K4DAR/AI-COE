@@ -1,5 +1,5 @@
 """
-RAG Chain module for RAG Bot
+RAG Chain module for RAG Bot - TRUE RAG with mandatory retrieval
 """
 import logging
 from typing import Dict, Any, List
@@ -55,7 +55,7 @@ def get_llm():
 
 
 class RAGChain:
-    """Simple RAG Chain implementation"""
+    """TRUE RAG Chain - MUST use retrieval before generation"""
 
     def __init__(self, vectordb, llm):
         self.vectordb = vectordb
@@ -63,30 +63,69 @@ class RAGChain:
         self.retriever = vectordb.as_retriever(
             search_kwargs={"k": config.RETRIEVER_K}
         )
+        logger.info(f"RAGChain initialized with retriever k={config.RETRIEVER_K}")
 
     def invoke(self, input_dict: Dict[str, Any]) -> Dict[str, Any]:
-        """Invoke the RAG chain"""
+        """
+        Invoke TRUE RAG chain - RETRIEVAL HAPPENS FIRST
+        
+        Returns:
+            Dictionary with:
+            - result: Generated answer
+            - source_documents: Retrieved documents (proof of RAG)
+            - retrieval_count: Number of documents retrieved
+        """
         query = input_dict.get("query", "")
+        logger.info(f"RAGChain.invoke called with query: {query[:100]}")
 
-        # Retrieve documents
+        # STEP 1: MANDATORY RETRIEVAL (this is what makes it RAG, not LLM)
+        logger.debug("STEP 1: Retrieving documents from vector store...")
         docs = self.retriever.invoke(query)
+        logger.info(f"Retrieved {len(docs)} documents from vector store")
+        
+        if not docs:
+            logger.warning("No documents retrieved - returning 'not found' response")
+            return {
+                "result": "I could not find any relevant information in the documents to answer your question.",
+                "source_documents": [],
+                "retrieval_count": 0,
+                "is_rag": True
+            }
 
-        # Create context from retrieved documents
-        context = "\n\n".join([doc.page_content for doc in docs])
+        # STEP 2: CONTEXT BUILDING from retrieved documents
+        logger.debug("STEP 2: Building context from retrieved documents...")
+        context_parts = []
+        for i, doc in enumerate(docs, 1):
+            source_info = doc.metadata.get('source', f'Document {i}')
+            context_parts.append(f"[Document {i}: {source_info}]\n{doc.page_content}")
+        
+        context = "\n\n".join(context_parts)
+        logger.debug(f"Context length: {len(context)} characters")
 
-        # Create prompt
+        # STEP 3: PROMPT WITH BALANCED INSTRUCTIONS
+        logger.debug("STEP 3: Creating prompt with RAG instructions...")
         prompt_template = ChatPromptTemplate.from_template(
-            """You are a helpful assistant. Use the following context to answer the question.
+            """You are a helpful assistant. Answer questions based on the provided documents.
 
-Context:
+RULES:
+1. Use the documents as your PRIMARY source of information
+2. If the answer is clearly in the documents, provide it with confidence
+3. If the answer requires connecting multiple parts, explain your reasoning
+4. Only say "not in documents" if you've genuinely searched the context
+5. If you can infer something reasonable from the documents, do so
+6. Prioritize document information over general knowledge
+7. Cite which document section you're using when relevant
+
+DOCUMENTS PROVIDED:
 {context}
 
-Question: {question}
+QUESTION: {question}
 
-Answer:"""
+ANSWER (based on the documents):"""
         )
 
-        # Get answer from LLM
+        # STEP 4: LLM GENERATION (generation happens AFTER retrieval with context)
+        logger.debug("STEP 4: Generating answer with LLM using retrieved context...")
         chain = (
             RunnableParallel(
                 context=lambda x: context,
@@ -97,10 +136,14 @@ Answer:"""
         )
 
         response = chain.invoke(query)
+        answer = response.content if hasattr(response, 'content') else str(response)
+        logger.info(f"Generated answer: {answer[:100]}")
 
         return {
-            "result": response.content if hasattr(response, 'content') else str(response),
-            "source_documents": docs
+            "result": answer,
+            "source_documents": docs,
+            "retrieval_count": len(docs),
+            "is_rag": True  # Proof this is TRUE RAG
         }
 
 

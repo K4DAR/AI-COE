@@ -10,125 +10,48 @@ from config import config
 logger = logging.getLogger(__name__)
 
 
+class VectorStore:
+    """Wrapper class for vector store operations"""
+    pass
+
+
 def get_embeddings():
     """
-    Get embeddings based on configured provider.
-    Uses offline models by default (no API key needed).
-    
-    Tries in order:
-    1. langchain-huggingface (if installed)
-    2. sentence-transformers (if installed)  
-    3. Simple TF-IDF fallback (always works, no dependencies)
+    Get embeddings using simple TF-IDF (no torch needed)
+    Lightweight and works offline
     
     Returns:
-        Embeddings instance for the configured provider
+        Embeddings instance
     """
-    provider = config.LLM_PROVIDER.lower()
+    from sklearn.feature_extraction.text import TfidfVectorizer
+    from langchain_core.embeddings import Embeddings
     
-    # Try 1: HuggingFace through langchain (most optimized)
-    try:
-        from langchain_huggingface import HuggingFaceEmbeddings
-        logger.info("✓ Using LangChain HuggingFace embeddings")
-        return HuggingFaceEmbeddings(
-            model_name="sentence-transformers/all-MiniLM-L6-v2",
-            model_kwargs={"device": "cpu"},
-            encode_kwargs={"normalize_embeddings": True}
-        )
-    except (ImportError, Exception) as e:
-        logger.debug(f"LangChain HuggingFace not available: {type(e).__name__}")
+    class SimpleEmbeddings(Embeddings):
+        """Simple TF-IDF embeddings using sklearn"""
+        
+        def __init__(self):
+            self.vectorizer = TfidfVectorizer(max_features=384, min_df=1)
+            self.fitted = False
+        
+        def embed_documents(self, texts):
+            """Embed documents"""
+            if not self.fitted:
+                vectors = self.vectorizer.fit_transform(texts).toarray()
+                self.fitted = True
+            else:
+                vectors = self.vectorizer.transform(texts).toarray()
+            return vectors.tolist()
+        
+        def embed_query(self, text):
+            """Embed query"""
+            if not self.fitted:
+                self.vectorizer.fit([text])
+                self.fitted = True
+            vector = self.vectorizer.transform([text]).toarray()[0]
+            return vector.tolist()
     
-    # Try 2: Direct sentence-transformers
-    try:
-        from sentence_transformers import SentenceTransformer
-        from langchain_core.embeddings import Embeddings
-        
-        logger.info("✓ Using sentence-transformers embeddings")
-        
-        class SentenceTransformerEmbeddings(Embeddings):
-            """Offline embeddings using sentence-transformers - completely free"""
-            
-            def __init__(self, model_name: str = "all-MiniLM-L6-v2"):
-                self.model = SentenceTransformer(model_name)
-            
-            def embed_documents(self, texts):
-                """Embed search docs"""
-                return self.model.encode(texts, convert_to_numpy=True).tolist()
-            
-            def embed_query(self, text):
-                """Embed query text"""
-                return self.model.encode(text, convert_to_numpy=True).tolist()
-        
-        return SentenceTransformerEmbeddings()
-    except (ImportError, Exception) as e:
-        logger.debug(f"sentence-transformers not available: {type(e).__name__}")
-    
-    # Try 3: Simpler approach - use sklearn's TfidfVectorizer wrapped for LangChain
-    try:
-        from sklearn.feature_extraction.text import TfidfVectorizer
-        from langchain_core.embeddings import Embeddings
-        
-        logger.warning("  Using TF-IDF fallback embeddings (simpler, works offline)")
-        
-        class TfidfEmbeddings(Embeddings):
-            """Simple TF-IDF embeddings - pure Python, no ML dependencies"""
-            
-            def __init__(self, max_features=300):
-                self.vectorizer = TfidfVectorizer(max_features=max_features)
-                self.fitted = False
-                self.vocabulary = {}
-            
-            def embed_documents(self, texts):
-                """Embed documents with TF-IDF"""
-                if not self.fitted:
-                    # First time: fit vectorizer
-                    vectors = self.vectorizer.fit_transform(texts).toarray()
-                    self.fitted = True
-                    self.vocabulary = self.vectorizer.vocabulary_
-                    return vectors.tolist()
-                else:
-                    # Subsequent calls: use fitted vectorizer
-                    vectors = self.vectorizer.transform(texts).toarray()
-                    return vectors.tolist()
-            
-            def embed_query(self, text):
-                """Embed single query"""
-                if not self.fitted:
-                    # Need at least one doc to fit
-                    self.vectorizer.fit([text])
-                    self.fitted = True
-                    self.vocabulary = self.vectorizer.vocabulary_
-                
-                vector = self.vectorizer.transform([text]).toarray()[0]
-                return vector.tolist()
-        
-        logger.info("✓ Using TF-IDF embeddings (fallback)")
-        return TfidfEmbeddings()
-    except (ImportError, Exception) as e:
-        logger.debug(f"TF-IDF not available: {e}")
-    
-    # Last resort: Check if OpenAI key is available
-    if config.OPENAI_API_KEY:
-        try:
-            from langchain_openai import OpenAIEmbeddings
-            logger.warning("  Using OpenAI embeddings (requires API key - will cost money)")
-            return OpenAIEmbeddings(
-                model="text-embedding-3-small",
-                api_key=config.OPENAI_API_KEY
-            )
-        except Exception as e:
-            logger.error(f"OpenAI embeddings failed: {e}")
-    
-    # If absolutely nothing works, raise error
-    error_msg = (
-        "No embeddings model available!\n"
-        "Please install one of:\n"
-        "  pip install langchain-huggingface sentence-transformers\n"
-        "or:\n"
-        "  pip install scikit-learn\n"
-        "For OpenAI (paid): add OPENAI_API_KEY to config/.env"
-    )
-    logger.error(error_msg)
-    raise RuntimeError(error_msg)
+    logger.info("Using lightweight TF-IDF embeddings (no torch needed)")
+    return SimpleEmbeddings()
 
 
 def build_vector_store(chunks):

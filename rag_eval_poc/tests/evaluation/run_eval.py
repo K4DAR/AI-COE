@@ -1,341 +1,489 @@
 """
-Evaluation module for RAG Bot
+DeepEval Integration for RAG Bot Evaluation
+
+This module runs structured LLM evaluations using DeepEval metrics:
+- Hallucination: Did the bot make up facts?
+- Faithfulness: Did the bot stick to the source documents?
+- Answer Relevancy: Did the bot answer the actual question?
+- Contextual Recall: Did the bot retrieve relevant context?
 """
-import yaml
-import logging
+
+import os
 import sys
 import json
+import yaml
+import logging
 from pathlib import Path
-from typing import List, Dict, Any
-from tqdm import tqdm
+from typing import Dict, List, Any
+from datetime import datetime
+import time
 
+# Add src to path - handle different working directories
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+
+# DeepEval imports
+from deepeval.test_case import LLMTestCase
+from deepeval.metrics import (
+    HallucinationMetric,
+    FaithfulnessMetric,
+    AnswerRelevancyMetric,
+    ContextualRecallMetric
+)
+
+# RAG Bot imports
 from config import config
-from validators import InputValidator, ValidationError
-from rag.vector_store import load_vector_store
+from rag.loader import load_documents
+from rag.vector_store import build_vector_store, get_embeddings
 from rag.rag_chain import build_rag_chain
 
-# Configure logging
-logging.basicConfig(
-    level=getattr(logging, config.LOG_LEVEL),
-    format=config.LOG_FORMAT
-)
 logger = logging.getLogger(__name__)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 
-try:
-    from deepeval import evaluate
-    from deepeval.metrics import (
-        HallucinationMetric,
-        FaithfulnessMetric,
-        AnswerRelevancyMetric,
-        ContextualRecallMetric
-    )
-    from deepeval.test_case import LLMTestCase
-    DEEPEVAL_AVAILABLE = True
-except ImportError:
-    DEEPEVAL_AVAILABLE = False
-    logger.warning("DeepEval not installed. Using basic evaluation only.")
+DEEPEVAL_AVAILABLE = True
 
 
 class TestCaseLoader:
     """Load and validate test cases from YAML"""
 
-    @staticmethod
-    def load_test_cases(filepath: str = None) -> List[Dict[str, Any]]:
-        """
-        Load test cases from YAML file
-        
-        Args:
-            filepath: Path to test cases YAML file
-            
-        Returns:
-            List of test case dictionaries
-            
-        Raises:
-            ValidationError: If file or test cases are invalid
-        """
-        if filepath is None:
-            filepath = str(config.EVAL_TEST_CASES_PATH)
-
-        logger.info(f"Loading test cases from {filepath}")
-
-        is_valid, error_msg = InputValidator.validate_file_path(filepath)
-        if not is_valid:
-            logger.error(f"File validation failed: {error_msg}")
-            raise ValidationError(f"Invalid test cases file: {error_msg}")
-
-        try:
-            with open(filepath, "r") as f:
-                test_cases = yaml.safe_load(f)
-
-            if not isinstance(test_cases, list):
-                logger.error("Test cases must be a list")
-                raise ValidationError("Test cases must be a YAML list")
-
-            if not test_cases:
-                logger.error("Test cases list is empty")
-                raise ValidationError("Test cases list is empty")
-
-            # Validate test cases
-            required_fields = ["question", "expected_answer"]
-            for i, tc in enumerate(test_cases):
-                if not isinstance(tc, dict):
-                    logger.error(f"Test case {i} is not a dictionary")
-                    raise ValidationError(f"Test case {i} must be a dictionary")
-
-                for field in required_fields:
-                    if field not in tc:
-                        logger.error(f"Test case {i} missing field: {field}")
-                        raise ValidationError(f"Test case {i} missing field: {field}")
-
-            logger.info(f"Loaded {len(test_cases)} test cases")
-            return test_cases
-
-        except Exception as e:
-            logger.error(f"Error loading test cases: {e}", exc_info=True)
-            raise
-
-
 class RAGEvaluator:
-    """Evaluate RAG Bot performance"""
-
-    def __init__(self, rag_chain):
-        """
-        Initialize evaluator
-        
-        Args:
-            rag_chain: RAG chain instance
-        """
-        self.rag_chain = rag_chain
+    """Evaluate RAG bot using DeepEval metrics"""
+    
+    def __init__(self, documents_dir: str = None):
+        """Initialize evaluator with RAG bot and metrics"""
+        self.documents_dir = documents_dir or str(config.DOCUMENTS_DIR)
         self.results = []
-
-    def run_inference(self, test_cases: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """
-        Run RAG chain on test cases
+        self.metrics_summary = {}
+        self.qa_chain = None
+        self._setup_rag_bot()
+    
+    def _setup_rag_bot(self):
+        """Initialize RAG bot with documents"""
+        logger.info("Setting up RAG bot...")
         
-        Args:
-            test_cases: List of test cases
+        try:
+            # Find all text and PDF files
+            doc_files = []
+            doc_path = Path(self.documents_dir)
             
-        Returns:
-            List of results with answers
-        """
-        logger.info(f"Running inference on {len(test_cases)} test cases...")
-
-        results = []
-
-        for i, tc in enumerate(tqdm(test_cases, desc="Processing test cases")):
-            try:
-                question = tc["question"]
-
-                # Validate question
-                is_valid, error_msg = InputValidator.validate_question(question)
-                if not is_valid:
-                    logger.warning(f"Test case {i}: Invalid question - {error_msg}")
-                    results.append({
-                        "test_case": tc,
-                        "answer": None,
-                        "sources": [],
-                        "error": error_msg
-                    })
+            if not doc_path.exists():
+                logger.error(f"Documents directory not found: {self.documents_dir}")
+                raise FileNotFoundError(f"Documents directory not found: {self.documents_dir}")
+            
+            # Get all TXT files
+            doc_files.extend(doc_path.glob("*.txt"))
+            # Get all PDF files
+            doc_files.extend(doc_path.glob("*.pdf"))
+            
+            if not doc_files:
+                logger.error(f"No documents found in {self.documents_dir}")
+                raise FileNotFoundError(f"No documents found in {self.documents_dir}")
+            
+            logger.info(f"Found {len(doc_files)} documents")
+            
+            # Load and chunk documents
+            all_chunks = []
+            for doc_file in doc_files:
+                logger.info(f"Loading {doc_file.name}...")
+                try:
+                    if doc_file.suffix.lower() == '.pdf':
+                        from langchain_community.document_loaders import PyPDFLoader
+                        loader = PyPDFLoader(str(doc_file))
+                        docs = loader.load()
+                    else:  # TXT files
+                        from langchain_community.document_loaders import TextLoader
+                        loader = TextLoader(str(doc_file))
+                        docs = loader.load()
+                    
+                    # Chunk documents
+                    from langchain_text_splitters import RecursiveCharacterTextSplitter
+                    splitter = RecursiveCharacterTextSplitter(
+                        chunk_size=config.PDF_CHUNK_SIZE,
+                        chunk_overlap=config.PDF_CHUNK_OVERLAP,
+                        separators=["\n\n", "\n", " ", ""]
+                    )
+                    chunks = splitter.split_documents(docs)
+                    all_chunks.extend(chunks)
+                    logger.info(f"  ✓ Loaded {len(chunks)} chunks from {doc_file.name}")
+                    
+                except Exception as e:
+                    logger.error(f"  ✗ Error loading {doc_file}: {str(e)}")
                     continue
-
-                # Invoke chain
-                logger.debug(f"Processing test case {i}: {question[:50]}...")
-                response = self.rag_chain.invoke({"query": question})
-
-                answer = response.get("result", "")
-                sources = response.get("source_documents", [])
-
-                results.append({
-                    "test_case": tc,
-                    "answer": answer,
-                    "sources": sources,
-                    "error": None
-                })
-
-            except Exception as e:
-                logger.error(f"Error processing test case {i}: {e}")
-                results.append({
-                    "test_case": tc,
-                    "answer": None,
-                    "sources": [],
-                    "error": str(e)
-                })
-
-        self.results = results
-        logger.info(f"Inference completed. Successful: {sum(1 for r in results if r['error'] is None)}/{len(results)}")
-
-        return results
-
-    def run_deepeval_metrics(self, results: List[Dict[str, Any]]) -> Dict[str, Any]:
+            
+            if not all_chunks:
+                raise ValueError("No document chunks created")
+            
+            logger.info(f"Total chunks loaded: {len(all_chunks)}")
+            
+            # Build vector store
+            logger.info("Building vector store...")
+            embeddings = get_embeddings()
+            vectordb = build_vector_store(all_chunks, embeddings)
+            logger.info("✓ Vector store built")
+            
+            # Build RAG chain
+            logger.info("Building RAG chain...")
+            self.qa_chain = build_rag_chain(vectordb)
+            logger.info("✓ RAG chain built successfully")
+            
+        except Exception as e:
+            logger.error(f"Failed to setup RAG bot: {str(e)}")
+            raise
+    
+    def get_rag_answer(self, question: str) -> tuple:
         """
-        Run DeepEval metrics
+        Get answer from RAG bot
+        
+        Returns:
+            (answer, context, source_docs)
+        """
+        try:
+            result = self.qa_chain.invoke({"query": question})
+            answer = result.get("result", "")
+            source_docs = result.get("source_documents", [])
+            
+            # Extract context from source documents
+            context = "\n\n".join([
+                doc.page_content for doc in source_docs
+            ])
+            
+            return answer, context, source_docs
+            
+        except Exception as e:
+            logger.error(f"Error getting RAG answer: {str(e)}")
+            return "", "", []
+    
+    def evaluate_test_case(self, test_case: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Evaluate a single test case with all metrics
         
         Args:
-            results: List of inference results
+            test_case: Dict with id, question, expected_answer, source_context
             
         Returns:
-            Dictionary with evaluation metrics
+            Dict with metric scores and details
         """
-        if not DEEPEVAL_AVAILABLE:
-            logger.warning("DeepEval not available. Skipping deep evaluation.")
-            return {}
-
-        logger.info("Running DeepEval metrics...")
-
-        # Filter valid results
-        valid_results = [r for r in results if r["error"] is None]
-
-        if not valid_results:
-            logger.warning("No valid results to evaluate")
-            return {}
-
-        # Create test cases
-        test_cases = []
-        for r in valid_results:
+        question = test_case.get("question", "")
+        expected_answer = test_case.get("expected_answer", "")
+        
+        logger.info(f"Evaluating Q#{test_case['id']}: {question[:50]}...")
+        
+        # Get RAG bot answer
+        actual_answer, context, source_docs = self.get_rag_answer(question)
+        
+        # Prepare retrieval context
+        retrieval_context = [doc.page_content for doc in source_docs] if source_docs else ["No context retrieved"]
+        
+        # Create test case for DeepEval
+        llm_test_case = LLMTestCase(
+            input=question,
+            actual_output=actual_answer,
+            expected_output=expected_answer,
+            retrieval_context=retrieval_context
+        )
+        
+        # Run metrics with error handling
+        metrics_results = {}
+        
+        # 1. Hallucination Metric (Lower is better, 0 is perfect)
+        try:
+            hallucination_metric = HallucinationMetric()
+            hallucination_metric.measure(llm_test_case)
+            metrics_results["Hallucination"] = {
+                "score": hallucination_metric.score,
+                "reason": hallucination_metric.reason,
+                "threshold": 0.0,
+                "passed": hallucination_metric.score == 0.0
+            }
+            logger.debug(f"  Hallucination: {hallucination_metric.score:.2f}")
+        except Exception as e:
+            logger.warning(f"  Hallucination metric failed: {str(e)}")
+            metrics_results["Hallucination"] = {"score": None, "error": str(e), "passed": False}
+        
+        # 2. Faithfulness Metric (Higher is better, 0-1 scale)
+        try:
+            faithfulness_metric = FaithfulnessMetric()
+            faithfulness_metric.measure(llm_test_case)
+            metrics_results["Faithfulness"] = {
+                "score": faithfulness_metric.score,
+                "reason": faithfulness_metric.reason,
+                "threshold": 0.7,
+                "passed": faithfulness_metric.score >= 0.7
+            }
+            logger.debug(f"  Faithfulness: {faithfulness_metric.score:.2f}")
+        except Exception as e:
+            logger.warning(f"  Faithfulness metric failed: {str(e)}")
+            metrics_results["Faithfulness"] = {"score": None, "error": str(e), "passed": False}
+        
+        # 3. Answer Relevancy Metric (Higher is better, 0-1 scale)
+        try:
+            relevancy_metric = AnswerRelevancyMetric()
+            relevancy_metric.measure(llm_test_case)
+            metrics_results["AnswerRelevancy"] = {
+                "score": relevancy_metric.score,
+                "reason": relevancy_metric.reason,
+                "threshold": 0.7,
+                "passed": relevancy_metric.score >= 0.7
+            }
+            logger.debug(f"  Answer Relevancy: {relevancy_metric.score:.2f}")
+        except Exception as e:
+            logger.warning(f"  Answer Relevancy metric failed: {str(e)}")
+            metrics_results["AnswerRelevancy"] = {"score": None, "error": str(e), "passed": False}
+        
+        # 4. Contextual Recall Metric (Higher is better, 0-1 scale)
+        try:
+            contextual_recall_metric = ContextualRecallMetric()
+            contextual_recall_metric.measure(llm_test_case)
+            metrics_results["ContextualRecall"] = {
+                "score": contextual_recall_metric.score,
+                "reason": contextual_recall_metric.reason,
+                "threshold": 0.6,
+                "passed": contextual_recall_metric.score >= 0.6
+            }
+            logger.debug(f"  Contextual Recall: {contextual_recall_metric.score:.2f}")
+        except Exception as e:
+            logger.warning(f"  Contextual Recall metric failed: {str(e)}")
+            metrics_results["ContextualRecall"] = {"score": None, "error": str(e), "passed": False}
+        
+        # Compile results
+        overall_passed = all(
+            m.get("passed", False) for m in metrics_results.values()
+            if m.get("score") is not None
+        )
+        
+        result = {
+            "test_id": test_case["id"],
+            "category": test_case.get("category", "unknown"),
+            "question": question,
+            "expected_answer": expected_answer,
+            "actual_answer": actual_answer,
+            "context": context,
+            "num_retrieved_docs": len(source_docs),
+            "metrics": metrics_results,
+            "overall_passed": overall_passed,
+            "timestamp": datetime.now().isoformat()
+        }
+        
+        return result
+    
+    def run_evaluation(self, test_cases_file: str = None) -> List[Dict[str, Any]]:
+        """
+        Run evaluation on all test cases
+        
+        Args:
+            test_cases_file: Path to YAML file with test cases
+            
+        Returns:
+            List of evaluation results
+        """
+        if test_cases_file is None:
+            test_cases_file = str(Path(__file__).parent / "test_cases.yaml")
+        
+        logger.info(f"Loading test cases from {test_cases_file}...")
+        
+        # Load test cases
+        with open(test_cases_file, 'r') as f:
+            data = yaml.safe_load(f)
+        
+        test_cases = data.get("test_cases", [])
+        logger.info(f"Loaded {len(test_cases)} test cases")
+        
+        # Run evaluation on each test case
+        for test_case in test_cases:
             try:
-                test_case = LLMTestCase(
-                    input=r["test_case"]["question"],
-                    actual_output=r["answer"],
-                    expected_output=r["test_case"]["expected_answer"]
-                )
-                test_cases.append(test_case)
+                result = self.evaluate_test_case(test_case)
+                self.results.append(result)
+                
+                # Add small delay to avoid rate limiting
+                time.sleep(0.5)
+                
             except Exception as e:
-                logger.warning(f"Could not create test case: {e}")
-
-        if not test_cases:
-            logger.warning("No valid test cases for evaluation")
-            return {}
-
-        try:
-            metrics = [
-                HallucinationMetric(),
-                FaithfulnessMetric(),
-                AnswerRelevancyMetric(),
-                ContextualRecallMetric()
-            ]
-
-            logger.debug(f"Running {len(metrics)} metrics on {len(test_cases)} test cases")
-            evaluate(test_cases=test_cases, metrics=metrics)
-            logger.info("DeepEval metrics completed")
-
-            return {"status": "completed"}
-
-        except Exception as e:
-            logger.error(f"Error running DeepEval metrics: {e}", exc_info=True)
-            return {"error": str(e)}
-
-    def print_results_summary(self, results: List[Dict[str, Any]]):
-        """Print summary of results"""
-        print("\n" + "=" * 80)
-        print("EVALUATION RESULTS SUMMARY")
-        print("=" * 80)
-
-        total = len(results)
-        successful = sum(1 for r in results if r["error"] is None)
-        failed = total - successful
-
-        print(f"\nTotal test cases: {total}")
-        print(f"Successful: {successful} ({successful/total*100:.1f}%)")
-        print(f"Failed: {failed} ({failed/total*100:.1f}%)")
-
-        if failed > 0:
-            print(f"\nFailed test cases:")
-            for i, r in enumerate(results):
-                if r["error"]:
-                    print(f"  {i+1}. Question: {r['test_case']['question'][:50]}...")
-                    print(f"     Error: {r['error']}")
-
-        print("\n" + "=" * 80)
-
-    def save_results(self, output_path: str = None):
-        """Save results to JSON file"""
-        if output_path is None:
-            output_path = config.EVALUATION_DIR / "evaluation_results.json"
-
-        logger.info(f"Saving results to {output_path}")
-
-        try:
-            # Convert to JSON-serializable format
-            json_results = []
-            for r in self.results:
-                json_results.append({
-                    "question": r["test_case"].get("question", ""),
-                    "expected_answer": r["test_case"].get("expected_answer", ""),
-                    "actual_answer": r["answer"],
-                    "error": r["error"],
-                    "source_count": len(r["sources"])
+                logger.error(f"Error evaluating test case {test_case['id']}: {str(e)}")
+                self.results.append({
+                    "test_id": test_case["id"],
+                    "question": test_case.get("question", ""),
+                    "error": str(e),
+                    "timestamp": datetime.now().isoformat()
                 })
-
-            Path(output_path).parent.mkdir(parents=True, exist_ok=True)
-
-            with open(output_path, "w") as f:
-                json.dump(json_results, f, indent=2)
-
-            logger.info(f"Results saved to {output_path}")
-
-        except Exception as e:
-            logger.error(f"Error saving results: {e}", exc_info=True)
+        
+        logger.info(f"\n✓ Evaluation complete: {len(self.results)} test cases processed")
+        return self.results
+    
+    def save_results(self, output_file: str = None) -> str:
+        """Save evaluation results to JSON file"""
+        if output_file is None:
+            output_dir = Path(__file__).parent
+            output_dir.mkdir(parents=True, exist_ok=True)
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            output_file = str(output_dir / f"evaluation_results_{timestamp}.json")
+        
+        with open(output_file, 'w') as f:
+            json.dump(self.results, f, indent=2, default=str)
+        
+        logger.info(f"✓ Results saved to {output_file}")
+        return output_file
+    
+    def generate_summary(self) -> Dict[str, Any]:
+        """Generate summary statistics from evaluation results"""
+        if not self.results:
+            return {}
+        
+        summary = {
+            "total_tests": len(self.results),
+            "passed_tests": sum(1 for r in self.results if r.get("overall_passed", False)),
+            "failed_tests": sum(1 for r in self.results if not r.get("overall_passed", True)),
+            "metrics": {}
+        }
+        
+        # Calculate per-metric statistics
+        for metric_name in ["Hallucination", "Faithfulness", "AnswerRelevancy", "ContextualRecall"]:
+            scores = []
+            for result in self.results:
+                if "metrics" in result:
+                    metric = result["metrics"].get(metric_name, {})
+                    if metric.get("score") is not None:
+                        scores.append(metric["score"])
+            
+            if scores:
+                summary["metrics"][metric_name] = {
+                    "avg_score": sum(scores) / len(scores),
+                    "min_score": min(scores),
+                    "max_score": max(scores),
+                    "passed": sum(1 for s in scores if (
+                        (metric_name == "Hallucination" and s == 0.0) or
+                        (metric_name != "Hallucination" and s >= 0.7)
+                    ))
+                }
+        
+        # Category breakdown
+        summary["by_category"] = {}
+        for category in set(r.get("category") for r in self.results if "category" in r):
+            category_results = [r for r in self.results if r.get("category") == category]
+            summary["by_category"][category] = {
+                "count": len(category_results),
+                "passed": sum(1 for r in category_results if r.get("overall_passed", False))
+            }
+        
+        return summary
+    
+    def print_summary(self):
+        """Print evaluation summary to console"""
+        summary = self.generate_summary()
+        
+        print("\n" + "="*80)
+        print("RAG BOT EVALUATION SUMMARY")
+        print("="*80)
+        
+        print(f"\nOverall: {summary['passed_tests']}/{summary['total_tests']} tests passed")
+        
+        print("\nMetric Performance:")
+        for metric, stats in summary.get("metrics", {}).items():
+            print(f"  {metric}:")
+            print(f"    Avg Score: {stats['avg_score']:.2f}")
+            print(f"    Range: {stats['min_score']:.2f} - {stats['max_score']:.2f}")
+            print(f"    Passed: {stats['passed']}/{summary['total_tests']}")
+        
+        print("\nResults by Category:")
+        for category, stats in summary.get("by_category", {}).items():
+            print(f"  {category}: {stats['passed']}/{stats['count']} passed")
+        
+        print("="*80 + "\n")
+        
+        return summary
+    
+    def export_detailed_report(self, output_file: str = None) -> str:
+        """Export detailed report in markdown format"""
+        if output_file is None:
+            output_dir = Path(__file__).parent
+            output_dir.mkdir(parents=True, exist_ok=True)
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            output_file = str(output_dir / f"evaluation_report_{timestamp}.md")
+        
+        summary = self.generate_summary()
+        
+        with open(output_file, 'w') as f:
+            f.write("# RAG Bot Evaluation Report\n\n")
+            f.write(f"**Generated**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
+            
+            # Summary stats
+            f.write(" Summary Statistics\n\n")
+            f.write(f"- **Total Tests**: {summary['total_tests']}\n")
+            f.write(f"- **Passed**: {summary['passed_tests']}\n")
+            f.write(f"- **Failed**: {summary['failed_tests']}\n")
+            f.write(f"- **Pass Rate**: {(summary['passed_tests']/summary['total_tests']*100):.1f}%\n\n")
+            
+            # Metric performance
+            f.write(" Metric Performance\n\n")
+            for metric, stats in summary.get("metrics", {}).items():
+                f.write(f"# {metric}\n")
+                f.write(f"- Average Score: {stats['avg_score']:.2f}\n")
+                f.write(f"- Min: {stats['min_score']:.2f}, Max: {stats['max_score']:.2f}\n")
+                f.write(f"- Passed: {stats['passed']}/{summary['total_tests']}\n\n")
+            
+            # Category breakdown
+            f.write(" Results by Category\n\n")
+            for category, stats in summary.get("by_category", {}).items():
+                f.write(f"- **{category}**: {stats['passed']}/{stats['count']} passed\n")
+            
+            f.write("\n Detailed Results\n\n")
+            for result in self.results:
+                f.write(f"# Test #{result['test_id']}\n")
+                f.write(f"**Category**: {result.get('category', 'unknown')}\n")
+                f.write(f"**Question**: {result['question']}\n\n")
+                f.write(f"**Expected**: {result['expected_answer']}\n\n")
+                f.write(f"**Actual**: {result['actual_answer']}\n\n")
+                
+                if "metrics" in result:
+                    f.write("**Metrics**:\n")
+                    for metric, m_data in result["metrics"].items():
+                        score = m_data.get("score")
+                        if score is not None:
+                            passed = "✓" if m_data.get("passed") else "✗"
+                            f.write(f"- {metric}: {score:.2f} {passed}\n")
+                            if m_data.get("reason"):
+                                f.write(f"  - Reason: {m_data['reason']}\n")
+                f.write("\n---\n\n")
+        
+        logger.info(f"✓ Report saved to {output_file}")
+        return output_file
 
 
 def main():
-    """Main evaluation entry point"""
-    import argparse
-
-    parser = argparse.ArgumentParser(description="Evaluate RAG Bot performance")
-    parser.add_argument(
-        "--test-cases",
-        type=str,
-        help="Path to test cases YAML file",
-        default=None
-    )
-    parser.add_argument(
-        "--output",
-        type=str,
-        help="Path to save evaluation results",
-        default=None
-    )
-    parser.add_argument(
-        "--skip-deepeval",
-        action="store_true",
-        help="Skip DeepEval metrics"
-    )
-
-    args = parser.parse_args()
-
+    """Main evaluation runner"""
+    logger.info("Starting RAG Bot Evaluation with DeepEval")
+    logger.info(f"LLM Provider: {config.LLM_PROVIDER}")
+    
     try:
-        # Load configuration
-        config.validate()
-
-        # Load test cases
-        loader = TestCaseLoader()
-        test_cases = loader.load_test_cases(args.test_cases)
-
-        # Load vector store and build chain
-        logger.info("Setting up RAG chain...")
-        vectordb = load_vector_store()
-        rag_chain = build_rag_chain(vectordb)
-
+        # Initialize evaluator
+        evaluator = RAGEvaluator()
+        
         # Run evaluation
-        evaluator = RAGEvaluator(rag_chain)
-        results = evaluator.run_inference(test_cases)
-
-        # Print summary
-        evaluator.print_results_summary(results)
-
+        test_cases_file = str(Path(__file__).parent / "test_cases.yaml")
+        evaluator.run_evaluation(test_cases_file)
+        
         # Save results
-        evaluator.save_results(args.output)
-
-        # Run DeepEval if available
-        if not args.skip_deepeval and DEEPEVAL_AVAILABLE:
-            evaluator.run_deepeval_metrics(results)
-
-    except ValidationError as e:
-        logger.error(f"Validation error: {e}")
-        sys.exit(1)
+        json_file = evaluator.save_results()
+        
+        # Print summary
+        evaluator.print_summary()
+        
+        # Export detailed report
+        report_file = evaluator.export_detailed_report()
+        
+        logger.info(f"\n✓ Evaluation complete!")
+        logger.info(f"  - JSON Results: {json_file}")
+        logger.info(f"  - Markdown Report: {report_file}")
+        
     except Exception as e:
-        logger.error(f"Evaluation failed: {e}", exc_info=True)
+        logger.error(f"Evaluation failed: {str(e)}", exc_info=True)
         sys.exit(1)
 
+
+if __name__ == "__main__":
+    main()
 
 if __name__ == "__main__":
     main()

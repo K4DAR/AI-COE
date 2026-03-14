@@ -28,9 +28,10 @@ class RAGBotDemo:
         Initialize RAG Bot
         
         Args:
-            pdf_path: Path to PDF file (optional)
+            pdf_path: Path to document file (PDF or TXT) - defaults to python_basics.txt
         """
-        self.pdf_path = pdf_path
+        # Default to python_basics.txt instead of sample_doc.pdf
+        self.pdf_path = pdf_path or "src/data/documents/python_basics.txt"
         self.qa_chain = None
         self.vectordb = None
 

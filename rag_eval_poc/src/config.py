@@ -49,7 +49,7 @@ class Config:
 
     # Vector Store Configuration
     VECTOR_STORE_TYPE = "chroma"
-    RETRIEVER_K = 3  # Number of documents to retrieve
+    RETRIEVER_K = 1  # Number of documents to retrieve
 
     # Validation Configuration
     MIN_QUESTION_LENGTH = 3
