@@ -58,9 +58,10 @@ def _get_groq_llm():
             logger.warning("GROQ_API_KEY not found in environment or config")
             return None
         
+        
         # Create custom DeepEval-compatible Groq wrapper
         class GroqModel(DeepEvalBaseLLM):
-            def __init__(self, api_key: str, model_name: str = "mixtral-8x7b-32k"):
+            def __init__(self, api_key: str, model_name: str = "mixtral-8x7b-32768"):
                 self.api_key = api_key
                 self.model_name = model_name
                 self.groq_client = ChatGroq(
@@ -72,8 +73,10 @@ def _get_groq_llm():
             def load_model(self):
                 return self.groq_client
             
+            def get_model_name(self) -> str:
+                return self.model_name
+            
             def generate(self, prompt: str) -> str:
-                """Generate text using Groq"""
                 try:
                     response = self.groq_client.invoke(prompt)
                     return response.content
@@ -82,8 +85,12 @@ def _get_groq_llm():
                     raise
             
             async def a_generate(self, prompt: str) -> str:
-                """Async generate text using Groq"""
-                return self.generate(prompt)
+                try:
+                    response = await self.groq_client.ainvoke(prompt)
+                    return response.content
+                except Exception as e:
+                    logger.error(f"Groq async generation error: {str(e)}")
+                    raise
         
         # Create instance
         groq_model = GroqModel(api_key=groq_key, model_name=config.GROQ_MODEL)
@@ -95,7 +102,6 @@ def _get_groq_llm():
         import traceback
         logger.error(traceback.format_exc())
         return None
-
 
 # Lazy-load Groq - don't configure at module import time
 _groq_llm = None
@@ -119,6 +125,102 @@ class EvaluationMetrics:
         "AnswerRelevancy": {"value": 0.7, "operator": ">="},  # At least 70%
         "ContextualRecall": {"value": 0.6, "operator": ">="}  # At least 60%
     }
+
+    def evaluate_response_single_pass(question: str, actual_answer: str, expected_answer: str, retrieval_context: List[str]) -> Dict[str, Any]:
+        groq_llm = _ensure_groq_configured()
+        
+        if not groq_llm:
+            return {"error": "Groq not configured", "overall_passed": False}
+
+        context_text = "\n\n".join(retrieval_context)
+
+        prompt = f"""
+                You are an expert evaluator for RAG systems.
+
+                Evaluate the response based on the following:
+
+                QUESTION:
+                {question}
+
+                EXPECTED ANSWER:
+                {expected_answer}
+
+                ACTUAL ANSWER:
+                {actual_answer}
+
+                RETRIEVED CONTEXT:
+                {context_text}
+
+                Return STRICT JSON ONLY (no explanation outside JSON):
+
+                {{
+                "hallucination": <float between 0 and 1>,
+                "faithfulness": <float between 0 and 1>,
+                "answer_relevancy": <float between 0 and 1>,
+                "contextual_recall": <float between 0 and 1>,
+                "reasoning": "short explanation"
+                }}
+
+                Scoring rules:
+                - hallucination = 0 means no hallucination
+                - faithfulness = grounded in context
+                - answer_relevancy = answers the question
+                - contextual_recall = uses retrieved context properly
+                """
+
+        try:
+            raw_output = groq_llm.generate(prompt)
+
+            # Extract JSON safely
+            import json
+            import re
+
+            json_match = re.search(r"\{.*\}", raw_output, re.DOTALL)
+            if not json_match:
+                raise ValueError("No valid JSON found in LLM output")
+
+            parsed = json.loads(json_match.group())
+
+            metrics = {
+                "Hallucination": {
+                    "score": parsed["hallucination"],
+                    "passed": parsed["hallucination"] == 0.0
+                },
+                "Faithfulness": {
+                    "score": parsed["faithfulness"],
+                    "passed": parsed["faithfulness"] >= 0.7
+                },
+                "AnswerRelevancy": {
+                    "score": parsed["answer_relevancy"],
+                    "passed": parsed["answer_relevancy"] >= 0.7
+                },
+                "ContextualRecall": {
+                    "score": parsed["contextual_recall"],
+                    "passed": parsed["contextual_recall"] >= 0.6
+                }
+            }
+
+            overall_passed = all(m["passed"] for m in metrics.values())
+
+            return {
+                "metrics": metrics,
+                "overall_passed": overall_passed,
+                "reason": parsed.get("reasoning", "")
+            }
+
+        except Exception as e:
+            logger.error(f"Single-pass evaluation failed: {str(e)}")
+            
+            return {
+                "metrics": {
+                    "Hallucination": {"error": str(e), "passed": False},
+                    "Faithfulness": {"error": str(e), "passed": False},
+                    "AnswerRelevancy": {"error": str(e), "passed": False},
+                    "ContextualRecall": {"error": str(e), "passed": False}
+                },
+                "overall_passed": False,
+                "error": str(e)
+            }
     
     @staticmethod
     def _check_llm_configured() -> Tuple[bool, str]:
@@ -136,7 +238,7 @@ class EvaluationMetrics:
             return True, f"✓ Using Groq ({config.GROQ_MODEL}) for evaluation metrics"
         
         return False, (
-            "❌ Groq API Key Not Configured!\n\n"
+            "Groq API Key Not Configured!\n\n"
             "Evaluation metrics require GROQ_API_KEY.\n\n"
             "To fix:\n"
             "1. Set GROQ_API_KEY in config/.env\n"
@@ -164,7 +266,7 @@ class EvaluationMetrics:
         
         if not groq_llm:
             error_msg = (
-                "❌ Groq API Key Not Configured!\n\n"
+                "Groq API Key Not Configured!\n\n"
                 "Evaluation metrics require GROQ_API_KEY.\n\n"
                 "To fix:\n"
                 "1. Set GROQ_API_KEY in config/.env\n"
@@ -187,16 +289,15 @@ class EvaluationMetrics:
             input=question,
             actual_output=actual_answer,
             expected_output=expected_answer,
-            retrieval_context=retrieval_context
+            context=retrieval_context if retrieval_context else ["No context available"],
+            retrieval_context=retrieval_context if retrieval_context else ["No context available"]
         )
-        
+                
         metrics_results = {}
         
         # 1. Hallucination Metric
         try:
-            metric = HallucinationMetric()
-            if groq_llm:
-                metric.model = groq_llm
+            metric = HallucinationMetric(model=groq_llm)
             metric.measure(llm_test_case)
             metrics_results["Hallucination"] = {
                 "score": metric.score,
@@ -215,9 +316,7 @@ class EvaluationMetrics:
         
         # 2. Faithfulness Metric
         try:
-            metric = FaithfulnessMetric()
-            if groq_llm:
-                metric.model = groq_llm
+            metric = FaithfulnessMetric(model=groq_llm)
             metric.measure(llm_test_case)
             metrics_results["Faithfulness"] = {
                 "score": metric.score,
@@ -236,9 +335,7 @@ class EvaluationMetrics:
         
         # 3. Answer Relevancy Metric
         try:
-            metric = AnswerRelevancyMetric()
-            if groq_llm:
-                metric.model = groq_llm
+            metric = AnswerRelevancyMetric(model=groq_llm)
             metric.measure(llm_test_case)
             metrics_results["AnswerRelevancy"] = {
                 "score": metric.score,
@@ -257,9 +354,7 @@ class EvaluationMetrics:
         
         # 4. Contextual Recall Metric
         try:
-            metric = ContextualRecallMetric()
-            if groq_llm:
-                metric.model = groq_llm
+            metric = ContextualRecallMetric(model=groq_llm)
             metric.measure(llm_test_case)
             metrics_results["ContextualRecall"] = {
                 "score": metric.score,
@@ -400,7 +495,7 @@ class UIEvaluator:
             }
         
         # Evaluate metrics
-        eval_result = EvaluationMetrics.evaluate_response(
+        eval_result = EvaluationMetrics.evaluate_response_single_pass(
             question, actual_answer, expected_answer, retrieval_context
         )
         

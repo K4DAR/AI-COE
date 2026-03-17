@@ -121,7 +121,7 @@ class RAGEvaluator:
             # Build vector store
             logger.info("Building vector store...")
             embeddings = get_embeddings()
-            vectordb = build_vector_store(all_chunks, embeddings)
+            vectordb = build_vector_store(all_chunks)
             logger.info("✓ Vector store built")
             
             # Build RAG chain

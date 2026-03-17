@@ -28,10 +28,10 @@ class RAGBotDemo:
         Initialize RAG Bot
         
         Args:
-            pdf_path: Path to document file (PDF or TXT) - defaults to python_basics.txt
+            pdf_path: Path to document file (PDF or TXT) - defaults to document.txt
         """
-        # Default to python_basics.txt instead of sample_doc.pdf
-        self.pdf_path = pdf_path or "src/data/python_basics.txt"
+        # Default to document.txt instead of sample_doc.pdf
+        self.pdf_path = pdf_path or "src/data/documents/document.txt"
         self.qa_chain = None
         self.vectordb = None
 
@@ -122,13 +122,13 @@ class RAGBotDemo:
         sources = response.get("source_documents", [])
 
         print("\n" + "=" * 80)
-        print("📝 ANSWER:")
+        print("ANSWER:")
         print("=" * 80)
         print(answer)
 
         if sources:
             print("\n" + "=" * 80)
-            print("📚 SOURCES:")
+            print("SOURCES:")
             print("=" * 80)
             for i, doc in enumerate(sources, 1):
                 metadata = doc.metadata
@@ -141,7 +141,7 @@ class RAGBotDemo:
     def interactive_mode(self):
         """Run interactive question-answer mode"""
         print("\n" + "=" * 80)
-        print("🤖 RAG BOT - Interactive Mode")
+        print("RAG BOT - Interactive Mode")
         print("=" * 80)
         print("Type 'exit' or 'quit' to end conversation")
         print("Type 'stats' to see bot statistics")
@@ -158,11 +158,11 @@ class RAGBotDemo:
 
                 if question.lower() in ["exit", "quit"]:
                     logger.info("User exited interactive mode")
-                    print("\n👋 Goodbye!")
+                    print("\nGoodbye!")
                     break
 
                 if question.lower() == "stats":
-                    print(f"\n📊 Statistics:")
+                    print(f"\nStatistics:")
                     print(f"   Questions asked: {question_count}")
                     continue
 
@@ -174,7 +174,7 @@ class RAGBotDemo:
 
             except KeyboardInterrupt:
                 logger.info("Interactive mode interrupted by user")
-                print("\n\n👋 Goodbye!")
+                print("\n\nGoodbye!")
                 break
             except Exception as e:
                 logger.error(f"Error in interactive mode: {e}", exc_info=True)
@@ -242,7 +242,7 @@ def main():
 
     except KeyboardInterrupt:
         logger.info("Application interrupted by user")
-        print("\n\n👋 Goodbye!")
+        print("\n\nGoodbye!")
         sys.exit(0)
     except Exception as e:
         logger.error(f"Fatal error: {e}", exc_info=True)

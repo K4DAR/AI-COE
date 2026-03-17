@@ -81,7 +81,7 @@ async def initialize_bot(pdf_path: Optional[str] = None) -> BotStatusResponse:
     global bot
     try:
         logger.info("Initializing bot...")
-        bot = RAGBotDemo(pdf_path=pdf_path or "data/documents/sample_doc.pdf")
+        bot = RAGBotDemo(pdf_path=pdf_path or "data/document.pdf")
         
         if bot.setup():
             logger.info("Bot initialized successfully")

@@ -14,7 +14,7 @@ import plotly.graph_objects as go
 import plotly.express as px
 
 from config import config
-from validators import InputValidator
+from validators import InputValidator, OutputValidator
 from demo import RAGBotDemo
 from evaluation import UIEvaluator, TestCaseManager
 
@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 st.set_page_config(
     page_title="RAG Intelligence Platform",
-    page_icon="🚀",
+    page_icon="",
     layout="wide",
 )
 
@@ -188,7 +188,7 @@ def display_header():
     st.markdown("""
     <div class="hero">
 
-    <h1>🚀 RAG Intelligence Platform</h1>
+    <h1>RAG Intelligence Platform</h1>
 
     <p>
     Enterprise Document AI powered by Retrieval-Augmented Generation.
@@ -226,28 +226,39 @@ def display_kpis():
         st.metric("Errors", st.session_state.stats["errors"])
 
 # =========================================================
+# SIDEBAR SETTINGS
+# =========================================================
+
+def sidebar_settings():
+    st.sidebar.subheader("⚙️ Settings")
+
+    with st.sidebar.expander("LLM Config"):
+        temp = st.slider("Temperature", 0.0, 1.0, float(config.OPENAI_TEMPERATURE))
+        k = st.slider("Retriever K", 1, 10, config.RETRIEVER_K)
+        st.caption(f"Temp={temp}, K={k}")
+
+    with st.sidebar.expander("Chunk Config"):
+        chunk_size = st.number_input("Chunk Size", 200, 2000, config.PDF_CHUNK_SIZE)
+        overlap = st.number_input("Overlap", 0, 500, config.PDF_CHUNK_OVERLAP)
+
+# =========================================================
 # BOT INITIALIZATION
 # =========================================================
 
 def init_bot():
 
     try:
-
         with st.spinner("Initializing RAG System..."):
 
-            bot = RAGBotDemo()
+            bot = RAGBotDemo(pdf_path="src/data/documents/document.txt")
 
             if bot.setup():
-
                 st.session_state.bot = bot
                 st.session_state.bot_initialized = True
-
                 return True
 
     except Exception as e:
-
         st.error(f"Initialization failed: {str(e)}")
-        logger.error(e)
 
     return False
 
@@ -257,25 +268,27 @@ def init_bot():
 
 def display_chat():
 
-    st.markdown('<div class="chat-window">', unsafe_allow_html=True)
-
     for msg in st.session_state.conversation_history:
 
         if msg["role"] == "user":
-
-            st.markdown(
-                f'<div class="user-msg"><b>You</b><br>{msg["content"]}</div>',
-                unsafe_allow_html=True
-            )
+            st.markdown(f"""
+            <div class="user-msg">
+            <b>You</b><br>{msg["content"]}
+            </div>
+            """, unsafe_allow_html=True)
 
         elif msg["role"] == "assistant":
+            st.markdown(f"""
+            <div class="ai-msg">
+            <b>AI</b><br>{msg["content"]}
+            </div>
+            """, unsafe_allow_html=True)
 
-            st.markdown(
-                f'<div class="ai-msg"><b>AI Assistant</b><br>{msg["content"]}</div>',
-                unsafe_allow_html=True
-            )
-
-    st.markdown('</div>', unsafe_allow_html=True)
+            # ✅ Show sources inline
+            if msg.get("sources"):
+                with st.expander("Sources"):
+                    for doc in msg["sources"][:3]:
+                        st.write(doc.page_content[:200])
 
 # =========================================================
 # SOURCE DOCUMENT VIEW
@@ -325,7 +338,7 @@ def display_metric_card(metric_name: str, score: float, threshold: float, passed
 
 def display_evaluation_test_cases():
     """Display test case loader and selector"""
-    st.subheader("📋 Test Case Management")
+    st.subheader("Test Case Management")
     
     col1, col2 = st.columns(2)
     
@@ -368,7 +381,7 @@ def display_evaluation_test_cases():
 
 def display_single_test_evaluation():
     """Display single test case evaluation interface"""
-    st.subheader("🧪 Single Test Evaluation")
+    st.subheader("Single Test Evaluation")
     
     if not st.session_state.evaluation_test_cases:
         st.warning("⚠ Load test cases first")
@@ -381,7 +394,7 @@ def display_single_test_evaluation():
     # Check if LLM judge is configured
     llm_configured, llm_msg = UIEvaluator._check_llm_for_metrics()
     if not llm_configured:
-        st.error(f"⚠️ LLM Judge Configuration Required\n\n{llm_msg}")
+        st.error(f"⚠ LLM Judge Configuration Required\n\n{llm_msg}")
         return
     
     # Select test case
@@ -418,7 +431,7 @@ def display_single_test_evaluation():
         
         # Display result
         st.write("---")
-        st.subheader("📊 Evaluation Results")
+        st.subheader("Evaluation Results")
         
         if "error" in result and result["error"]:
             st.error(f"✗ Error: {result['error']}")
@@ -446,14 +459,14 @@ def display_single_test_evaluation():
             
             # Show retrieved context
             st.write("---")
-            with st.expander("📄 Retrieved Context"):
+            with st.expander("Retrieved Context"):
                 st.text_area("Context", result.get("context", "No context"), 
                            height=200, disabled=True)
 
 
 def display_batch_evaluation():
     """Display batch evaluation interface"""
-    st.subheader("⚡ Batch Evaluation")
+    st.subheader("Batch Evaluation")
     
     if not st.session_state.evaluation_test_cases:
         st.warning("⚠ Load test cases first")
@@ -511,7 +524,7 @@ def display_batch_evaluation():
         
         # Display summary
         st.write("---")
-        st.subheader("📈 Batch Results Summary")
+        st.subheader("Batch Results Summary")
         
         summary = st.session_state.evaluator.get_results_summary(batch_results)
         
@@ -529,7 +542,7 @@ def display_batch_evaluation():
 
 def display_evaluation_results():
     """Display evaluation results and metrics"""
-    st.subheader("📊 Evaluation Results")
+    st.subheader("Evaluation Results")
     
     if not st.session_state.evaluation_results:
         st.info("ℹ Run batch evaluation to see results here")
@@ -588,7 +601,7 @@ def display_evaluation_results():
             for cat, stats in category_data.items()
         ])
         
-        st.dataframe(df_category, use_container_width=True)
+        st.dataframe(df_category, width='stretch')
     
     st.write("---")
     
@@ -613,14 +626,14 @@ def display_evaluation_results():
     
     if results_data:
         df_results = pd.DataFrame(results_data)
-        st.dataframe(df_results, use_container_width=True)
+        st.dataframe(df_results, width='stretch')
     
     st.write("---")
     
     # Export results
     col1, col2 = st.columns(2)
     with col1:
-        if st.button("💾 Export Results as JSON"):
+        if st.button("Export Results as JSON"):
             try:
                 json_file = st.session_state.evaluator.export_results_json(
                     results=st.session_state.evaluation_results
@@ -639,7 +652,7 @@ def display_evaluation_results():
 
 def display_metrics_dashboard():
     """Display comprehensive metrics dashboard"""
-    st.subheader("📈 Metrics Dashboard")
+    st.subheader("Metrics Dashboard")
     
     if not st.session_state.evaluation_results:
         st.info("ℹ Run batch evaluation to see dashboard")
@@ -673,7 +686,7 @@ def display_metrics_dashboard():
             height=400,
             showlegend=False
         )
-        st.plotly_chart(fig_metrics, use_container_width=True)
+        st.plotly_chart(fig_metrics, width='stretch')
     
     # Create pass/fail pie chart
     col1, col2 = st.columns(2)
@@ -688,7 +701,7 @@ def display_metrics_dashboard():
             title="Pass/Fail Distribution",
             height=400
         )
-        st.plotly_chart(fig_pie, use_container_width=True)
+        st.plotly_chart(fig_pie, width='stretch')
     
     with col2:
         # Category pass rates
@@ -717,7 +730,7 @@ def display_metrics_dashboard():
                 height=400,
                 showlegend=False
             )
-            st.plotly_chart(fig_category, use_container_width=True)
+            st.plotly_chart(fig_category, width='stretch')
 
 
 
@@ -736,7 +749,7 @@ def main():
     display_kpis()
 
     # Create tabs for Chat and Evaluation
-    tab_chat, tab_evaluation = st.tabs(["💬 Chat", "🧪 Evaluation"])
+    tab_chat, tab_analytics, tab_evaluation = st.tabs(["Chat", "Analytics", "Evaluation"])
 
     with tab_chat:
 
@@ -768,11 +781,21 @@ def main():
             st.subheader("Session Tools")
 
             if st.button("Clear Conversation"):
-
                 st.session_state.conversation_history = []
                 st.rerun()
 
-            if st.button("🔄 Reset Vector Database"):
+            st.download_button(
+                label="Export Chat",
+                data=json.dumps({
+                    "timestamp": datetime.now().isoformat(),
+                    "messages": st.session_state.conversation_history,
+                    "stats": st.session_state.stats
+                }, indent=2),
+                file_name=f"rag_chat_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+                mime="application/json"
+            )
+
+            if st.button("Reset Vector Database"):
                 """Reset the vector store if there are embedding mismatches"""
                 import shutil
                 from pathlib import Path
@@ -792,7 +815,7 @@ def main():
 
             st.write("Model: Groq LLM")
             st.write("Vector DB: Chroma")
-
+            sidebar_settings()
         # -----------------------------------------------------
 
         with col_main:
@@ -806,16 +829,26 @@ def main():
                 placeholder="Example: What is Python used for?"
             )
 
-            if st.button("Ask") and question:
+            ask_clicked = st.button("Ask")
+
+            if ask_clicked:
+
+                if not st.session_state.bot_initialized:
+                    st.warning("Initialize the AI system first")
+                    return
+
+                if not question:
+                    st.warning("Please enter a question")
+                    return
 
                 valid, error = InputValidator.validate_question(question)
 
                 if not valid:
-
                     st.error(error)
                     st.session_state.stats["errors"] += 1
                     return
 
+                # ✅ Add user message
                 st.session_state.conversation_history.append({
                     "role": "user",
                     "content": question
@@ -824,32 +857,50 @@ def main():
                 start = time.time()
 
                 with st.spinner("Generating answer..."):
-
                     response = st.session_state.bot.process_question(question)
 
                 elapsed = time.time() - start
 
-                if response:
+                if response and response.get("result"):
 
                     answer = response.get("result", "")
                     sources = response.get("source_documents", [])
 
+                    is_valid, _ = OutputValidator.validate_answer(answer)
+                    if not is_valid:
+                        st.warning("Generated answer may be low quality")
+
+                    # ✅ Add assistant message
                     st.session_state.conversation_history.append({
                         "role": "assistant",
-                        "content": answer
+                        "content": answer,
+                        "sources": sources
                     })
-
-                    display_sources(sources)
 
                     st.session_state.stats["total_questions"] += 1
                     st.session_state.stats["total_time"] += elapsed
 
                 else:
-
                     st.error("Failed to generate answer")
                     st.session_state.stats["errors"] += 1
 
                 st.rerun()
+
+    with tab_analytics:
+
+        st.subheader("System Analytics")
+
+        if st.session_state.stats["total_questions"] == 0:
+            st.info("No data yet")
+        else:
+            display_kpis()
+
+            success_rate = (
+                (st.session_state.stats["total_questions"] - st.session_state.stats["errors"])
+                / st.session_state.stats["total_questions"]
+            ) * 100
+
+            st.metric("Success Rate", f"{success_rate:.1f}%")
 
     # ========================================================
     # EVALUATION TAB
@@ -858,12 +909,12 @@ def main():
     with tab_evaluation:
 
         if not st.session_state.bot_initialized:
-            st.warning("⚠️ Initialize RAG bot in the Chat tab first!")
+            st.warning("⚠ Initialize RAG bot in the Chat tab first!")
         else:
 
             # Evaluation sub-tabs
             eval_tab1, eval_tab2, eval_tab3, eval_tab4 = st.tabs(
-                ["📋 Test Cases", "🧪 Single Test", "⚡ Batch Run", "📊 Results & Dashboard"]
+                ["Test Cases", "Single Test", "Batch Run", "Results & Dashboard"]
             )
 
             with eval_tab1:

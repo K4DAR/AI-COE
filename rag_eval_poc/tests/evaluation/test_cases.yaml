@@ -1,197 +1,175 @@
 test_cases:
-  # ========== STRAIGHTFORWARD QUESTIONS (10) ==========
-  # These have clear answers directly in the documents
-  
+
+  # ========== EASY QUESTIONS (10) ==========
+
   - id: 1
     category: straightforward
-    question: "What year was Python first released?"
-    expected_answer: "Python was first released in 1991"
-    source_context: "Chapter 1: It was created by Guido van Rossum and first released in 1991."
+    question: "What is Artificial Intelligence?"
+    expected_answer: "Artificial Intelligence refers to computer systems capable of performing tasks that require human intelligence"
+    source_context: "AI refers to systems capable of learning, reasoning, problem-solving, and decision-making"
     difficulty: easy
-    notes: "Direct fact from introduction"
+    notes: "Direct definition"
 
   - id: 2
     category: straightforward
-    question: "Who created Python?"
-    expected_answer: "Guido van Rossum created Python"
-    source_context: "Chapter 1: It was created by Guido van Rossum and first released in 1991."
+    question: "Name two key characteristics of AI systems"
+    expected_answer: "AI systems can process large data and recognize patterns"
+    source_context: "Ability to process large volumes of data, pattern recognition"
     difficulty: easy
-    notes: "Straightforward factual question"
+    notes: "List-based answer"
 
   - id: 3
     category: straightforward
-    question: "What are the two main number types in Python?"
-    expected_answer: "Integers and floats are the two main number types in Python"
-    source_context: "Chapter 3: Python supports two main number types: integers and floats."
+    question: "What is Machine Learning?"
+    expected_answer: "Machine Learning is a subset of AI that enables systems to learn from data without explicit programming"
+    source_context: "ML enables systems to learn patterns from data"
     difficulty: easy
-    notes: "Clear enumerated list"
+    notes: "Direct definition"
 
   - id: 4
     category: straightforward
-    question: "How do you create a virtual environment in Python?"
-    expected_answer: "You create a virtual environment using the command: python -m venv myenv"
-    source_context: "Chapter 11: Create a virtual environment - python -m venv myenv"
+    question: "What are the three types of machine learning?"
+    expected_answer: "Supervised learning, unsupervised learning, and reinforcement learning"
+    source_context: "Common methods include supervised, unsupervised, reinforcement learning"
     difficulty: easy
-    notes: "Direct command shown in document"
+    notes: "Enumerated list"
 
   - id: 5
     category: straightforward
-    question: "What does the DRY principle stand for?"
-    expected_answer: "DRY stands for Don't Repeat Yourself"
-    source_context: "Chapter 10: DRY Principle: Don't Repeat Yourself - extract repeated code into functions"
+    question: "What does NLP stand for?"
+    expected_answer: "Natural Language Processing"
+    source_context: "Natural Language Processing (NLP)"
     difficulty: easy
-    notes: "Acronym definition"
+    notes: "Acronym expansion"
 
   - id: 6
     category: straightforward
-    question: "Name three reasons why Python is popular?"
-    expected_answer: "Python is popular because: 1) It is easy to learn, 2) It is versatile, 3) It has a large community"
-    source_context: "Chapter 1: Easy to Learn, Versatile, and Large Community are listed as reasons"
+    question: "What is Computer Vision?"
+    expected_answer: "Computer Vision allows machines to interpret and understand visual data"
+    source_context: "Computer Vision interprets images and videos"
     difficulty: easy
-    notes: "Multiple choice from bulleted list"
+    notes: "Definition"
 
   - id: 7
     category: straightforward
-    question: "What is the correct syntax for defining a function in Python?"
-    expected_answer: "Functions are defined using the def keyword followed by the function name and parentheses"
-    source_context: "Chapter 5: Functions are defined with the def keyword: def greet(name):"
+    question: "What is supervised learning?"
+    expected_answer: "Supervised learning trains a model using labeled data"
+    source_context: "Each input is paired with a correct output"
     difficulty: easy
-    notes: "Syntax question"
+    notes: "Concept definition"
 
   - id: 8
     category: straightforward
-    question: "What are the three file modes for opening files in Python?"
-    expected_answer: "r (read), w (write), and a (append) are the three main file modes"
-    source_context: "Chapter 6: File Modes - r (read), w (write), a (append)"
+    question: "What is unsupervised learning used for?"
+    expected_answer: "It is used to find patterns or groupings in unlabeled data"
+    source_context: "Used when data does not contain labeled outputs"
     difficulty: easy
-    notes: "Enumerated list from document"
+    notes: "Concept usage"
 
   - id: 9
     category: straightforward
-    question: "What is the minimum RAM requirement for Python installation?"
-    expected_answer: "The minimum RAM requirement is 512 MB for basic use"
-    source_context: "Chapter 2: RAM: 512 MB for basic use, 2GB or more recommended"
+    question: "What is the purpose of vector databases?"
+    expected_answer: "Vector databases store and search high-dimensional vectors for similarity"
+    source_context: "Designed for similarity search"
     difficulty: easy
-    notes: "System requirement specification"
+    notes: "Direct concept"
 
   - id: 10
     category: straightforward
-    question: "What does the 'with' statement do when working with files?"
-    expected_answer: "The 'with' statement ensures that files are properly closed after use"
-    source_context: "Chapter 6: Always use the with statement to ensure files are properly closed."
+    question: "What is Retrieval-Augmented Generation (RAG)?"
+    expected_answer: "RAG combines retrieval of documents with language generation to improve accuracy"
+    source_context: "Combines retrieval with generation"
     difficulty: easy
-    notes: "Best practice explanation"
+    notes: "Core concept"
 
   # ========== TRICKY QUESTIONS (5) ==========
-  # These require combining information or inference
-  
+
   - id: 11
     category: tricky
-    question: "If you need to read a PDF file in Python, what would be the appropriate approach combining chapters 6 and the document?"
-    expected_answer: "You would use a PDF library in binary mode with 'rb' parameter to handle the binary data appropriately"
-    source_context: "Chapter 6 mentions binary mode: b (binary mode for images, PDFs, etc.). This requires inference that PDF files need binary mode."
+    question: "Why is data quality important in AI systems?"
+    expected_answer: "Poor data quality leads to incorrect predictions and biased models"
+    source_context: "High-quality data must be accurate, complete, and consistent"
     difficulty: medium
-    notes: "Requires connecting file operations with PDF format knowledge"
+    notes: "Cause-effect reasoning"
 
   - id: 12
     category: tricky
-    question: "What is the relationship between virtual environments and the requirements.txt file in a Python project?"
-    expected_answer: "Virtual environments provide isolated Python installations, and requirements.txt lists the packages installed in that environment for reproducibility"
-    source_context: "Chapter 11 describes virtual environments, Chapter 12 explains requirements.txt and pip freeze command creates it"
+    question: "How does RAG improve factual accuracy compared to standard LLMs?"
+    expected_answer: "RAG retrieves external documents and uses them as context instead of relying only on internal knowledge"
+    source_context: "RAG retrieves relevant documents before generating answers"
     difficulty: medium
-    notes: "Requires understanding workflow across multiple chapters"
+    notes: "Comparison reasoning"
 
   - id: 13
     category: tricky
-    question: "Why might using a list comprehension be better than a regular loop according to the document?"
-    expected_answer: "List comprehensions are more efficient and use less memory than regular loops for creating lists"
-    source_context: "Chapter 10: Use list comprehensions instead of loops, and Chapter 10 Performance Tips mention memory efficiency"
+    question: "Why are vector databases used instead of traditional databases in AI systems?"
+    expected_answer: "Because they support similarity search instead of exact matching"
+    source_context: "Vector DBs focus on similarity search"
     difficulty: medium
-    notes: "Requires understanding performance concepts"
+    notes: "Concept comparison"
 
   - id: 14
     category: tricky
-    question: "If you have a function that needs to accept any number of arguments, what Python feature should you use?"
-    expected_answer: "You should use variable-length arguments with the *args syntax"
-    source_context: "Chapter 5: Variable-Length Arguments - def sum_all(*numbers):"
+    question: "What problem does text chunking solve in RAG systems?"
+    expected_answer: "It breaks large documents into smaller pieces for efficient embedding and retrieval"
+    source_context: "Large documents are split into smaller chunks"
     difficulty: medium
-    notes: "Requires specific Python knowledge application"
+    notes: "Pipeline reasoning"
 
   - id: 15
     category: tricky
-    question: "How would you ensure your Python code follows community standards?"
-    expected_answer: "You should follow PEP 8, which is Python's official style guide"
-    source_context: "Chapter 10: Follow PEP 8: Python's official style guide for consistent formatting"
+    question: "Why is reinforcement learning useful for decision-making systems?"
+    expected_answer: "Because it learns strategies based on rewards and penalties over time"
+    source_context: "Agents learn by maximizing long-term rewards"
     difficulty: medium
-    notes: "Requires inference of best practices"
+    notes: "Concept application"
 
-  # ========== UNANSWERABLE QUESTIONS (5) ==========
-  # These cannot be answered from the provided documents
-  
+  # ========== HARD / UNANSWERABLE QUESTIONS (5) ==========
+
   - id: 16
     category: unanswerable
-    question: "What is the current version number of Python as of 2024?"
+    question: "What is the accuracy percentage of AI systems in healthcare?"
     expected_answer: "This information is not available in the provided document"
     source_context: "not_in_documents"
     difficulty: hard
-    notes: "Document is timeless reference material"
+    notes: "Numerical data not provided"
 
   - id: 17
     category: unanswerable
-    question: "Which Python web framework (Django or Flask) is better for building REST APIs?"
-    expected_answer: "This comparison is not covered in the document"
+    question: "Which vector database is the most widely used in production?"
+    expected_answer: "The document lists databases but does not rank them"
     source_context: "not_in_documents"
     difficulty: hard
-    notes: "Document focuses on basics, not frameworks"
+    notes: "Requires external comparison"
 
   - id: 18
     category: unanswerable
-    question: "What is the most popular IDE used by professional Python developers in 2024?"
-    expected_answer: "While IDEs are mentioned, no statistics on popularity are provided"
+    question: "What is the training dataset size required for large language models?"
+    expected_answer: "The document does not specify dataset sizes"
     source_context: "not_in_documents"
     difficulty: hard
-    notes: "Document mentions IDEs but doesn't compare popularity"
+    notes: "Missing technical detail"
 
   - id: 19
     category: unanswerable
-    question: "How much does PyCharm Professional Edition cost?"
-    expected_answer: "The document mentions PyCharm but does not provide pricing information"
+    question: "Which company developed the first AI system?"
+    expected_answer: "This historical information is not included in the document"
     source_context: "not_in_documents"
     difficulty: hard
-    notes: "Pricing not covered in educational document"
+    notes: "Out-of-scope knowledge"
 
   - id: 20
     category: unanswerable
-    question: "What are the salary expectations for Python developers in the United States?"
-    expected_answer: "This career information is not available in the provided document"
+    question: "What is the cost of implementing an enterprise AI system?"
+    expected_answer: "Cost details are not provided in the document"
     source_context: "not_in_documents"
     difficulty: hard
-    notes: "Document focuses on technical content, not career info"
+    notes: "Business data missing"
 
-evaluation_parameters:
-  retriever_k: 3
-  chunk_size: 500
-  overlap: 100
-  temperature: 0.3
-  deepeval_metrics:
-    - Hallucination
-    - Faithfulness
-    - AnswerRelevancy
-    - ContextualRecall
-  deepeval_thresholds:
-    Hallucination: 0.0  # Should be 0 (no hallucination)
-    Faithfulness: 0.7   # At least 70% faithful
-    AnswerRelevancy: 0.7 # At least 70% relevant
-    ContextualRecall: 0.6 # At least 60% contextual recall
-
-notes: |
-  Test case structure:
-  - Straightforward (10): Clear answers directly in document
-  - Tricky (5): Require inference or combining multiple sections
-  - Unanswerable (5): Information not present in documents - should trigger "I don't know" responses
-  
-  For evaluation:
-  - Run each question through the RAG bot
-  - Capture both the bot's answer and the retrieved context
-  - Run DeepEval metrics on each answer
-  - Analyze which questions fail and why
+  - id: 21
+    category: unanswerable
+    question: "what year was python released?"
+    expected_answer: "1991"
+    source_context: "not_in_documents"
+    difficulty: hard
+    notes: "Speculative question"

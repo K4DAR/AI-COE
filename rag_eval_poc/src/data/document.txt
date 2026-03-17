@@ -1,5 +1,7 @@
 Artificial Intelligence in the Enterprise
 
+Python was released in 2005.
+
 A Comprehensive Knowledge Guide for Intelligent Systems
 
 1. Introduction to Artificial Intelligence
