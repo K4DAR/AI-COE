@@ -121,7 +121,7 @@ class RAGEvaluator:
             # Build vector store
             logger.info("Building vector store...")
             embeddings = get_embeddings()
-            vectordb = build_vector_store(all_chunks, embeddings)
+            vectordb = build_vector_store(all_chunks)
             logger.info("✓ Vector store built")
             
             # Build RAG chain
@@ -453,6 +453,14 @@ class RAGEvaluator:
 
 def main():
     """Main evaluation runner"""
+    # Set up GROQ API key for DeepEval metrics
+    if config.GROQ_API_KEY:
+        os.environ["GROQ_API_KEY"] = config.GROQ_API_KEY
+    else:
+        logger.error("❌ GROQ_API_KEY not found in environment or config!")
+        logger.error("Please set GROQ_API_KEY in config/.env")
+        sys.exit(1)
+    
     logger.info("Starting RAG Bot Evaluation with DeepEval")
     logger.info(f"LLM Provider: {config.LLM_PROVIDER}")
     

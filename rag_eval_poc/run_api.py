@@ -21,7 +21,7 @@ if __name__ == "__main__":
     from api import app
     
     print(" Starting FastAPI server on http://0.0.0.0:8000")
-    print("📖 API docs: http://localhost:8000/docs")
+    print("API docs: http://localhost:8000/docs")
     
     uvicorn.run(
         app,

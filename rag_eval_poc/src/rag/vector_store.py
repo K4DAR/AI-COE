@@ -17,41 +17,99 @@ class VectorStore:
 
 def get_embeddings():
     """
-    Get embeddings using simple TF-IDF (no torch needed)
-    Lightweight and works offline
+    Get embeddings using HuggingFace sentence-transformers (384 dims)
+    Falls back to TF-IDF if sentence-transformers unavailable
     
     Returns:
         Embeddings instance
     """
-    from sklearn.feature_extraction.text import TfidfVectorizer
-    from langchain_core.embeddings import Embeddings
-    
-    class SimpleEmbeddings(Embeddings):
-        """Simple TF-IDF embeddings using sklearn"""
+    try:
+        # Try to use HuggingFace sentence-transformers (recommended, 384 dims)
+        from langchain_huggingface import HuggingFaceEmbeddings
         
-        def __init__(self):
-            self.vectorizer = TfidfVectorizer(max_features=384, min_df=1)
-            self.fitted = False
+        logger.info("Using HuggingFace sentence-transformers embeddings (384 dimensions)")
+        embeddings = HuggingFaceEmbeddings(
+            model_name="all-MiniLM-L6-v2",  # 384 dimensional embeddings
+            model_kwargs={"device": "cpu"}
+        )
+        return embeddings
         
-        def embed_documents(self, texts):
-            """Embed documents"""
-            if not self.fitted:
-                vectors = self.vectorizer.fit_transform(texts).toarray()
-                self.fitted = True
-            else:
-                vectors = self.vectorizer.transform(texts).toarray()
-            return vectors.tolist()
+    except Exception as e:
+        logger.warning(f"HuggingFace embeddings failed: {str(e)}")
+        logger.info("Falling back to TF-IDF embeddings")
         
-        def embed_query(self, text):
-            """Embed query"""
-            if not self.fitted:
-                self.vectorizer.fit([text])
-                self.fitted = True
-            vector = self.vectorizer.transform([text]).toarray()[0]
-            return vector.tolist()
-    
-    logger.info("Using lightweight TF-IDF embeddings (no torch needed)")
-    return SimpleEmbeddings()
+        from sklearn.feature_extraction.text import TfidfVectorizer
+        from langchain_core.embeddings import Embeddings
+        import numpy as np
+        
+        class TFIDFEmbeddings(Embeddings):
+            """Consistent TF-IDF embeddings with fixed dimensionality"""
+            
+            def __init__(self):
+                # Use fixed vocabulary to ensure consistent dimensions
+                self.vectorizer = TfidfVectorizer(
+                    max_features=384,  # Fixed at 384 to match default
+                    min_df=1,
+                    stop_words='english'
+                )
+                self.fitted = False
+                self.fitted_texts = []
+            
+            def _pad_vector(self, vector):
+                """Pad or trim vector to exactly 384 dimensions"""
+                if len(vector) < 384:
+                    # Pad with zeros to reach 384 dimensions
+                    return vector + [0.0] * (384 - len(vector))
+                elif len(vector) > 384:
+                    # Trim to 384 dimensions
+                    return vector[:384]
+                else:
+                    return vector
+            
+            def embed_documents(self, texts):
+                """Embed documents - fits on first call"""
+                if not self.fitted:
+                    # Fit on all texts at once for consistency
+                    self.fitted_texts = texts
+                    try:
+                        vectors = self.vectorizer.fit_transform(texts).toarray()
+                        # Pad each vector to 384 dimensions
+                        vectors = np.array([self._pad_vector(v.tolist()) for v in vectors])
+                    except Exception as fit_err:
+                        logger.error(f"Failed to fit TF-IDF: {fit_err}")
+                        # If fit fails, return dummy vectors as fallback
+                        vectors = np.zeros((len(texts), 384))
+                    self.fitted = True
+                    return vectors.tolist()
+                else:
+                    # Use existing fitted vectorizer
+                    try:
+                        vectors = self.vectorizer.transform(texts).toarray()
+                        # Pad each vector to 384 dimensions
+                        vectors = np.array([self._pad_vector(v.tolist()) for v in vectors])
+                    except Exception as transform_err:
+                        logger.warning(f"Failed to transform texts: {transform_err}")
+                        vectors = np.zeros((len(texts), 384))
+                    return vectors.tolist()
+            
+            def embed_query(self, text):
+                """Embed query"""
+                if not self.fitted:
+                    logger.warning("Embedding query before TFIDFEmbeddings was fitted with documents")
+                    # Fit on the query itself as a fallback
+                    _ = self.embed_documents([text])
+                
+                try:
+                    vector = self.vectorizer.transform([text]).toarray()[0]
+                    vector = self._pad_vector(vector.tolist())
+                except Exception as e:
+                    logger.warning(f"Failed to embed query: {e}")
+                    vector = np.zeros(384).tolist()
+                
+                return vector
+        
+        logger.info("Using TF-IDF embeddings (384 dimensions)")
+        return TFIDFEmbeddings()
 
 
 def build_vector_store(chunks):
@@ -95,9 +153,12 @@ def build_vector_store(chunks):
         raise
 
 
-def load_vector_store():
+def load_vector_store(reset_on_mismatch=True):
     """
     Load existing vector store from disk
+    
+    Args:
+        reset_on_mismatch: If True, reset DB on dimension mismatch instead of crashing
     
     Returns:
         Chroma vector store instance
@@ -124,24 +185,36 @@ def load_vector_store():
             embedding_function=embeddings,
             collection_name="rag_documents"
         )
-
-        # Test if vector store has documents
-        try:
-            count = vectordb._collection.count()
-            logger.info(f"Vector store loaded successfully with {count} documents")
-        except Exception as e:
-            logger.warning(f"Could not verify document count: {e}")
-
+        
+        logger.info("Vector store loaded successfully")
         return vectordb
 
     except Exception as e:
-        logger.error(f"Error loading vector store: {str(e)}", exc_info=True)
-        raise
+        error_str = str(e)
+        
+        # Check if it's a dimension mismatch error
+        if "expecting embedding with dimension" in error_str.lower() and reset_on_mismatch:
+            logger.warning(f"Dimension mismatch detected: {error_str}")
+            logger.warning("Resetting vector store...")
+            
+            import shutil
+            try:
+                # Remove the corrupted vector store
+                shutil.rmtree(config.CHROMA_DB_DIR)
+                logger.info("Removed corrupted vector store")
+                logger.info("Vector store will be rebuilt on next document load")
+                raise FileNotFoundError(
+                    f"Vector store had dimension mismatch and was reset. "
+                    f"Please load documents again to rebuild it."
+                )
+            except Exception as cleanup_err:
+                logger.error(f"Failed to cleanup corrupted vector store: {str(cleanup_err)}")
+                raise
+        else:
+            logger.error(f"Error loading vector store: {error_str}", exc_info=True)
+            raise
 
 
-def delete_vector_store():
-    """Delete existing vector store"""
-    import shutil
 
     if Path(config.CHROMA_DB_DIR).exists():
         logger.warning(f"Deleting vector store at {config.CHROMA_DB_DIR}")

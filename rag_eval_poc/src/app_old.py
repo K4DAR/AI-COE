@@ -172,8 +172,8 @@ def init_bot(pdf_path: Optional[str] = None) -> bool:
     """Initialize RAG bot"""
     try:
         with st.spinner("🤖 Initializing RAG Bot..."):
-            # Use python_basics.txt as default document
-            bot_path = pdf_path or "src/data/python_basics.txt"
+            # Use document.txt as default document
+            bot_path = pdf_path or "src/data/document.txt"
             bot = RAGBotDemo(pdf_path=bot_path)
             if bot.setup():
                 st.session_state.bot = bot
@@ -388,7 +388,7 @@ def main():
                 st.caption(f"📄 {Path(st.session_state.current_pdf).name}")
         else:
             st.warning("⚠️ Bot Not Ready")
-            if st.button("🚀 Initialize Bot", use_container_width=True):
+            if st.button("🚀 Initialize Bot", width='stretch'):
                 if init_bot():
                     st.rerun()
         
@@ -442,7 +442,7 @@ def main():
                     )
                 
                 with col2:
-                    submit = st.button("🔍 Ask", use_container_width=True)
+                    submit = st.button("🔍 Ask", width='stretch')
                 
                 if submit and question:
                     # Validate input
@@ -495,12 +495,12 @@ def main():
                 # Clear history button
                 col1, col2 = st.columns(2)
                 with col1:
-                    if st.button("🗑️ Clear History", use_container_width=True):
+                    if st.button("🗑️ Clear History", width='stretch'):
                         st.session_state.conversation_history = []
                         st.rerun()
                 
                 with col2:
-                    if st.button("💾 Export Chat", use_container_width=True):
+                    if st.button("💾 Export Chat", width='stretch'):
                         # Export to JSON
                         export_data = {
                             "timestamp": datetime.now().isoformat(),
@@ -576,13 +576,13 @@ def main():
             
             col1, col2 = st.columns(2)
             with col1:
-                if st.button("🔄 Restart Bot", use_container_width=True):
+                if st.button("🔄 Restart Bot", width='stretch'):
                     st.session_state.bot = None
                     st.session_state.bot_initialized = False
                     st.rerun()
             
             with col2:
-                if st.button("🗑️ Reset Stats", use_container_width=True):
+                if st.button("🗑️ Reset Stats", width='stretch'):
                     st.session_state.stats = {
                         "total_questions": 0,
                         "total_time": 0.0,
