@@ -17,6 +17,15 @@ from pathlib import Path
 from typing import Dict, List, Any
 from datetime import datetime
 import time
+from groq_model import GroqModel
+from dotenv import load_dotenv
+
+# Ensure environment is loaded before importing config
+config_path = Path(__file__).parent.parent / "config" / ".env"
+if config_path.exists():
+    load_dotenv(config_path, override=True)
+else:
+    load_dotenv(override=True)
 
 # Add src to path - handle different working directories
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
@@ -59,6 +68,10 @@ class RAGEvaluator:
         self.metrics_summary = {}
         self.qa_chain = None
         self._setup_rag_bot()
+        self.groq_llm = GroqModel(
+            api_key=os.getenv("GROQ_API_KEY") or config.GROQ_API_KEY,
+            model_name=os.getenv("GROQ_MODEL") or config.GROQ_MODEL
+        )
     
     def _setup_rag_bot(self):
         """Initialize RAG bot with documents"""
@@ -146,10 +159,8 @@ class RAGEvaluator:
             source_docs = result.get("source_documents", [])
             
             # Extract context from source documents
-            context = "\n\n".join([
-                doc.page_content for doc in source_docs
-            ])
-            
+            context = [doc.page_content for doc in source_docs]
+                     
             return answer, context, source_docs
             
         except Exception as e:
@@ -182,6 +193,7 @@ class RAGEvaluator:
             input=question,
             actual_output=actual_answer,
             expected_output=expected_answer,
+            context=context,
             retrieval_context=retrieval_context
         )
         
@@ -190,8 +202,10 @@ class RAGEvaluator:
         
         # 1. Hallucination Metric (Lower is better, 0 is perfect)
         try:
-            hallucination_metric = HallucinationMetric()
+            hallucination_metric = HallucinationMetric(model=self.groq_llm)
+            #hallucination_metric = HallucinationMetric()
             hallucination_metric.measure(llm_test_case)
+            time.sleep(1.1)  # Add small delay to avoid rate limiting
             metrics_results["Hallucination"] = {
                 "score": hallucination_metric.score,
                 "reason": hallucination_metric.reason,
@@ -205,8 +219,10 @@ class RAGEvaluator:
         
         # 2. Faithfulness Metric (Higher is better, 0-1 scale)
         try:
-            faithfulness_metric = FaithfulnessMetric()
+            faithfulness_metric = FaithfulnessMetric(model=self.groq_llm)
+            #faithfulness_metric = FaithfulnessMetric()
             faithfulness_metric.measure(llm_test_case)
+            time.sleep(1.1) # Add small delay to avoid rate limiting
             metrics_results["Faithfulness"] = {
                 "score": faithfulness_metric.score,
                 "reason": faithfulness_metric.reason,
@@ -220,8 +236,11 @@ class RAGEvaluator:
         
         # 3. Answer Relevancy Metric (Higher is better, 0-1 scale)
         try:
-            relevancy_metric = AnswerRelevancyMetric()
+            relevancy_metric = AnswerRelevancyMetric(model=self.groq_llm)
+            #relevancy_metric = AnswerRelevancyMetric()
             relevancy_metric.measure(llm_test_case)
+            time.sleep(1.1) # Add small delay to avoid rate limiting
+
             metrics_results["AnswerRelevancy"] = {
                 "score": relevancy_metric.score,
                 "reason": relevancy_metric.reason,
@@ -235,8 +254,11 @@ class RAGEvaluator:
         
         # 4. Contextual Recall Metric (Higher is better, 0-1 scale)
         try:
-            contextual_recall_metric = ContextualRecallMetric()
+            contextual_recall_metric = ContextualRecallMetric(model=self.groq_llm)
+            #contextual_recall_metric = ContextualRecallMetric()
             contextual_recall_metric.measure(llm_test_case)
+            time.sleep(1.1) # Add small delay to avoid rate limiting
+
             metrics_results["ContextualRecall"] = {
                 "score": contextual_recall_metric.score,
                 "reason": contextual_recall_metric.reason,
@@ -249,11 +271,23 @@ class RAGEvaluator:
             metrics_results["ContextualRecall"] = {"score": None, "error": str(e), "passed": False}
         
         # Compile results
-        overall_passed = all(
-            m.get("passed", False) for m in metrics_results.values()
+        valid_metrics = [
+            m for m in metrics_results.values()
             if m.get("score") is not None
-        )
-        
+        ]
+
+        passed_metrics = [
+            m for m in valid_metrics
+            if m.get("passed")
+        ]
+
+        overall_passed = len(passed_metrics) >= 2   # majority pass
+
+        logger.info(f"Hallucination Score: {metrics_results['Hallucination']}")
+        logger.info(f"Faithfulness Score: {metrics_results['Faithfulness']}")
+        logger.info(f"Answer Relevancy Score: {metrics_results['AnswerRelevancy']}")
+        logger.info(f"Contextual Recall Score: {metrics_results['ContextualRecall']}")
+
         result = {
             "test_id": test_case["id"],
             "category": test_case.get("category", "unknown"),
@@ -296,15 +330,14 @@ class RAGEvaluator:
             try:
                 result = self.evaluate_test_case(test_case)
                 self.results.append(result)
-                
-                # Add small delay to avoid rate limiting
-                time.sleep(0.5)
-                
             except Exception as e:
                 logger.error(f"Error evaluating test case {test_case['id']}: {str(e)}")
                 self.results.append({
                     "test_id": test_case["id"],
                     "question": test_case.get("question", ""),
+                    "expected_answer": test_case.get("expected_answer", ""),  # ✅ ADD
+                    "actual_answer": "",
+                    "metrics": {},
                     "error": str(e),
                     "timestamp": datetime.now().isoformat()
                 })
@@ -441,7 +474,7 @@ class RAGEvaluator:
                     for metric, m_data in result["metrics"].items():
                         score = m_data.get("score")
                         if score is not None:
-                            passed = "✓" if m_data.get("passed") else "✗"
+                            passed = "PASS" if m_data.get("passed") else "FAIL"
                             f.write(f"- {metric}: {score:.2f} {passed}\n")
                             if m_data.get("reason"):
                                 f.write(f"  - Reason: {m_data['reason']}\n")

@@ -372,10 +372,13 @@ class EvaluationMetrics:
             }
         
         # Overall pass status
-        overall_passed = all(
-            m.get("passed", False) for m in metrics_results.values()
-            if m.get("score") is not None
-        )
+        overall_passed = True
+
+        for m in metrics_results.values():
+            if m.get("score") is None:
+                overall_passed = False
+            elif not m.get("passed", False):
+                overall_passed = False
         
         return {
             "metrics": metrics_results,
