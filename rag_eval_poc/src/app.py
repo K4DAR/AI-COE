@@ -539,6 +539,31 @@ def display_batch_evaluation():
             pass_rate = (summary["passed_tests"] / summary["total_tests"] * 100) if summary["total_tests"] > 0 else 0
             st.metric("Pass Rate", f"{pass_rate:.1f}%")
 
+def serialize_chat(history):
+    serialized = []
+
+    for msg in history:
+        new_msg = {
+            "role": msg.get("role"),
+            "content": str(msg.get("content"))
+        }
+
+        if msg.get("sources"):
+            safe_sources = []
+            for doc in msg["sources"]:
+                try:
+                    safe_sources.append({
+                        "content": str(doc.page_content)[:300],
+                        "metadata": dict(doc.metadata) if hasattr(doc, "metadata") else {}
+                    })
+                except Exception:
+                    continue
+
+            new_msg["sources"] = safe_sources
+
+        serialized.append(new_msg)
+
+    return serialized
 
 def display_evaluation_results():
     """Display evaluation results and metrics"""
@@ -640,11 +665,15 @@ def display_evaluation_results():
                 )
                 with open(json_file, 'r') as f:
                     st.download_button(
-                        label="Download JSON",
-                        data=f.read(),
-                        file_name=Path(json_file).name,
-                        mime="application/json"
-                    )
+                    label="Export Chat",
+                    data=json.dumps({
+                        "timestamp": datetime.now().isoformat(),
+                        "messages": serialize_chat(st.session_state.conversation_history),
+                        "stats": st.session_state.stats
+                    }, indent=2),
+                    file_name=f"rag_chat_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+                    mime="application/json"
+                )
                 st.success(f"✓ Results exported to {json_file}")
             except Exception as e:
                 st.error(f"✗ Error exporting: {str(e)}")
@@ -788,7 +817,7 @@ def main():
                 label="Export Chat",
                 data=json.dumps({
                     "timestamp": datetime.now().isoformat(),
-                    "messages": st.session_state.conversation_history,
+                    "messages": serialize_chat(st.session_state.conversation_history),
                     "stats": st.session_state.stats
                 }, indent=2),
                 file_name=f"rag_chat_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
