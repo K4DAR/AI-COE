@@ -1,358 +1,609 @@
-# RAG Bot LLM Evaluation POC - README
+# RAG Evaluation Proof of Concept
 
-## ✨ NEW: Evaluation Now in Streamlit UI!
+A hands-on learning project for evaluating Retrieval-Augmented Generation (RAG) systems using structured LLM evaluation techniques. This POC demonstrates how to systematically measure quality issues like hallucination, unfaithfulness, and answer irrelevance in GenAI applications.
 
-Evaluation is fully integrated into the interactive Streamlit application. No need to run CLI scripts anymore!
+## 🎯 Project Objective
 
-### Quick Start (5 minutes)
+**Key Question:** Does structured LLM evaluation actually catch problems that manual testing doesn't?
 
-```bash
-# 1. Install dependencies
-pip install -r requirements.txt
+This project answers that question by:
+1. Building a minimal RAG-based Q&A bot
+2. Creating 20 test questions (answerable, partially answerable, and unanswerable)
+3. Running structured evaluations using **DeepEval** metrics
+4. Analyzing results to quantify which issues evaluation catches vs. manual testing misses
+5. Documenting findings with specific examples
 
-# 2. Set Groq API key (for RAG bot - free)
-export GROQ_API_KEY="your_key_from_console.groq.com"
-
-# 3. Set OpenAI API key (for evaluation metrics - optional, ~$1-2 for full POC)
-export OPENAI_API_KEY="sk-your-key"
-
-# 4. Run Streamlit app
-streamlit run src/app.py
-
-# 5. In browser:
-# - Initialize AI in Chat tab
-# - Go to Evaluation tab
-# - Load test cases & run evaluations
-# - View interactive results dashboard
-```
-
-### ⚠️ Important: LLM Judge Configuration
-
-**The evaluation metrics require an OpenAI API key** (or see [LLM_JUDGE_SETUP.md](LLM_JUDGE_SETUP.md) for alternatives).
-
-DeepEval uses an LLM to evaluate your bot's responses. The bot uses Groq (free), but metrics use OpenAI GPT-4o as a judge.
-
-**Cost:** ~$1-2 USD for evaluating all 20 test cases
-
-**Setup:** Add `OPENAI_API_KEY` to your `config/.env` file
-See [LLM_JUDGE_SETUP.md](LLM_JUDGE_SETUP.md) for detailed instructions.
-
-### Features
-
-**🧪 Evaluation in UI:**
-- Single test evaluation with detailed metrics
-- Batch evaluation with progress bar
-- Real-time results dashboard with charts
-- Export results as JSON
-- Filter tests by category
-- View retrieved context for each test
-
-**📊 4 DeepEval Metrics:**
-- Hallucination Detection (0 = pass)
-- Faithfulness (≥70% = pass)
-- Answer Relevancy (≥70% = pass)
-- Contextual Recall (≥60% = pass)
-
-**📚 20 Test Cases Included:**
-- 10 Straightforward
-- 5 Tricky
-- 5 Unanswerable
-
-### Documentation
-
-For detailed information, see:
-- **[QUICK_START.md](QUICK_START.md)** - 5-minute walkthrough
-- **[LLM_JUDGE_SETUP.md](LLM_JUDGE_SETUP.md)** - Configure evaluation metrics
-- **[EVALUATION.md](EVALUATION.md)** - Complete user guide
-- **[ARCHITECTURE.md](ARCHITECTURE.md)** - System design
-- **[EVALUATION_QUICK_REFERENCE.md](EVALUATION_QUICK_REFERENCE.md)** - Technical reference
-
-## Project Structure
-
-```
-rag_eval_poc/
-├── src/
-│   ├── rag/
-│   │   ├── __init__.py
-│   │   ├── loader.py           # Document loading (PDF, TXT, etc)
-│   │   ├── rag_chain.py        # RAG chain: retrieval + generation
-│   │   └── vector_store.py     # ChromaDB + embeddings setup
-│   ├── app.py                  # Streamlit UI (optional)
-│   ├── api.py                  # FastAPI backend (optional)
-│   ├── config.py               # Configuration + API keys
-│   ├── validators.py           # Input validation
-│   └── data/
-│        └── document.txt  # Sample document (5000+ lines)
-│
-├── tests/
-│   ├── test_cases.yaml         # 20 evaluation questions (10+5+5)
-│   ├── test_system.py          # System tests
-│   └── evaluation/
-│       ├── run_eval.py         # DeepEval metrics runner
-│       └── evaluation_results_*.json  # Generated metric scores
-│
-├── docs/
-│   ├── getting-started/        # Setup guides
-│   ├── guides/                 # How-to guides
-│   └── reference/
-│       └── POC_FINAL_OUTPUT.md # ← This is the main deliverable
-│
-├── demo.py                     # Live demonstration script
-├── quick_eval.py               # Fast evaluation runner
-├── requirements.txt            # Python dependencies
-└── config/.env                 # Environment variables
-
-```
-
-## What Each Script Does
-
-### `demo.py` - Live Demonstration (5 minutes)
-Shows the RAG bot in action with 3 example questions (easy, tricky, unanswerable).
-```bash
-python demo.py
-```
-Output: Shows answer, retrieved documents, and all 4 metric scores for each question.
-
-### `quick_eval.py` - Full Evaluation (15 minutes)
-Runs all 20 test questions through the RAG bot and DeepEval metrics.
-```bash
-python quick_eval.py
-```
-Output: JSON results file + Markdown report with detailed analysis.
-
-### `tests/evaluation/run_eval.py` - Advanced Evaluation
-Full-featured evaluation runner with custom configuration options.
-```bash
-python tests/evaluation/run_eval.py --test-cases tests/test_cases.yaml --output results.json
-```
-
-## The 20 Test Questions
-
-### Straightforward (10) - Should all pass
-1. "What year was Python first released?"
-2. "Who created Python?"
-3. "What are the two main number types in Python?"
-... (7 more - see `tests/test_cases.yaml`)
-
-### Tricky (5) - Require inference
-1. "How would you combine PDF file operations with Python?"
-2. "What is the relationship between virtual environments and requirements.txt?"
-... (3 more)
-
-### Unanswerable (5) - Information NOT in documents
-1. "What is the current version of Python as of 2024?"
-2. "Which Python web framework (Django or Flask) is better?"
-... (3 more)
-
-All in: `tests/test_cases.yaml`
-
-## The 4 DeepEval Metrics
-
-| Metric | Purpose | Threshold |
-|--------|---------|-----------|
-| **Hallucination** | Detects made-up facts | ≤ 0.1 (lower is better) |
-| **Faithfulness** | Checks answer is grounded in docs | ≥ 0.7 (higher is better) |
-| **AnswerRelevancy** | Verifies answer addresses question | ≥ 0.7 (higher is better) |
-| **ContextualRecall** | Evaluates retrieval quality | ≥ 0.6 (higher is better) |
-
-**How they work**: Each metric uses an LLM as a judge to evaluate bot responses. DeepEval handles this for us.
-
-## Understanding the Results
-
-### Hallucination Score
-```
-Example: 0.15 - Bot included 1-2 minor made-up facts but mostly accurate
-Example: 0.85 - Bot confidently claimed facts not in documents (DANGER!)
-Example: 0.0 - Perfectly faithful, no hallucinations (SAFE)
-```
-**Action**: Scores > 0.5 need investigation. Unanswerable questions often have high scores.
-
-### Faithfulness Score
-```
-Example: 0.92 - Answer tightly grounded in retrieved documents (GOOD)
-Example: 0.52 - Answer partially from training data, not just docs (WARNING)
-Example: 0.25 - Mostly from training knowledge, ignoring docs (PROBLEM)
-```
-**Action**: Scores < 0.7 indicate retrieval or prompt issues.
-
-### Answer Relevancy Score
-```
-Example: 0.88 - Directly and completely answered the question (GOOD)
-Example: 0.65 - Answered but included unnecessary extras (WARNING)
-Example: 0.30 - Off-topic or missed key parts of question (PROBLEM)
-```
-**Action**: Scores < 0.7 mean questions need rephrasing or bot needs better prompting.
-
-### Contextual Recall Score
-```
-Example: 0.95 - Retriever found all relevant context (EXCELLENT)
-Example: 0.68 - Found most relevant docs, missed some (ACCEPTABLE)
-Example: 0.15 - Retriever completely failed for this question (PROBLEM)
-```
-**Action**: Low scores mean your retrieval strategy needs work (re-chunking, re-ranking, etc).
-
-## Key Findings from POC
-
-### 1. Manual Testing Misses 60-80% of Issues
-- Hallucinations score of 0.85? Humans would think "sounds right"
-- Training data leakage? Humans wouldn't notice without document comparison
-- Retrieval failures? Would require manual document checking separate from testing
-
-### 2. Unanswerable Questions are Dangerous
-- 80% of unanswerable test questions caused hallucination (bot made up answers)
-- Must add "I don't know" capability to reduce this
-
-### 3. Retrieval Quality = Foundation
-- Improving retrieval has 40% higher impact than improving prompts
-- If ContextualRecall < 0.6, all other metrics suffer
-
-### 4. Metrics Cost Nothing (Basically)
-- Using free Groq API: ~$0.01 per question
-- Evaluation of 20 questions: < $0.50 total
-- Much cheaper than manual review (2+ hours labor)
-
-### 5. Metrics Agree With Each Other
-- When one metric fails, others usually do too
-- No conflicting signals
-- Can use any metric as quick proxy
-
-## Production Recommendations
-
-### Immediate (This Sprint)
-1. Add "I don't know" capability to bot
-   - Threshold: If no highly-confident retrieval (>0.8), refuse to answer
-   
-2. Improve document chunking
-   - Current: 800 char fixed; try 1000 with variable overlap
-   - Should improve ContextualRecall by 15-20%
-
-3. Add re-ranking step
-   - Use cross-encoder to re-rank top 5 retrieved docs
-   - Better retrieval = better faithfulness
-
-### Short Term (Next Sprint)
-1. Build evaluation dashboard
-   - Track metric scores over time
-   - Alert on regressions
-   - Integrate into CI/CD
-
-2. Expand test set
-   - Current: 20 questions
-   - Target: 100+ covering all features
-
-3. A/B test improvements
-   - Try different prompts
-   - Compare retrieval strategies
-   - Measure impact with metrics
-
-### Long Term (Asset Phase)
-1. Build production evaluation framework
-   - Automated testing for all new questions
-   - Regression detection
-   - User feedback loop
-
-2. Monitor in production
-   - Run metrics on sample of real user questions
-   - Alert if quality drops
-   - Dashboard for operations team
-
-## Troubleshooting
-
-### "GROQ_API_KEY not set"
-```bash
-export GROQ_API_KEY="gsk_your_key_here"
-# Get free key at: https://console.groq.com
-```
-
-### Script hangs or runs slowly
-- First 2 runs create/optimize vector store (takes 1-2 min)
-- Each metric takes 10-30 seconds per question (calls LLM)
-- Total: 15+ minutes for full 20 questions is expected
-
-### Low metric scores across the board
-1. Check retrieval: Does vector store have documents?
-   - `python -c "from src.rag.vector_store import load_vector_store; db = load_vector_store()"`
-2. Check LLM: Is Groq API key valid?
-   - `python -c "from src.rag.rag_chain import get_llm; llm = get_llm(); print(llm.invoke('hello'))`
-
-### Out of memory errors
-- Reduce batch size in config.py
-- Run evaluation on smaller question sets
-
-## Running on Your Own Documents
-
-1. Replace `src/data/document.txt` with your document
-2. Update `tests/test_cases.yaml` with questions about your domain
-3. Run: `python quick_eval.py`
-
-**Format requirements**:
-- TXT or PDF files only
-- Text should be human-readable
-- Minimum 1000 characters recommended
-
-## API Reference
-
-### RAG Chain
-```python
-from src.rag.rag_chain import build_rag_chain
-from src.rag.vector_store import load_vector_store
-
-# Load vector store and build chain
-vectordb = load_vector_store()
-qa_chain = build_rag_chain(vectordb)
-
-# Ask a question
-result = qa_chain.invoke({"query": "What is Python?"})
-answer = result["result"]
-source_docs = result["source_documents"]
-```
-
-### Metrics
-```python
-from deepeval.test_case import LLMTestCase
-from deepeval.metrics import HallucinationMetric
-
-# Create test case
-test_case = LLMTestCase(
-    input="What year was Python released?",
-    actual_output="Python was released in 1991",
-    expected_output="1991",
-    retrieval_context=["Python was created by Guido van Rossum and first released in 1991."]
-)
-
-# Measure
-metric = HallucinationMetric()
-metric.measure(test_case)
-print(f"Score: {metric.score}")  # 0.0 = no hallucination
-```
-
-## Learning Resources
-
-- **DeepEval**: https://github.com/confident-ai/deepeval
-- **LangChain**: https://python.langchain.com/
-- **RAG Concepts**: https://docs.llamaindex.ai/
-- **LLM Evaluation**: https://www.confident-ai.com/blog/llm-evaluation-metrics-everything-you-need-for-llm-evaluation
-
-## Main Deliverable
-
-**See**: `docs/reference/POC_FINAL_OUTPUT.md`
-
-This is the key document explaining:
-- What was built
-- Why evaluation matters
-- Key findings (manual testing misses 60-80% of issues)
-- Detailed metric analysis
-- Recommendations for asset phase
-
-## Questions or Issues?
-
-1. Check the error logs: `quick_eval.py` prints detailed debug info
-2. Review test cases: `tests/test_cases.yaml`
-3. Read findings: `docs/reference/POC_FINAL_OUTPUT.md`
-4. Run demo: `python demo.py` (safer for debugging)
+**This is not about building a reusable tool—it's about learning how LLMs fail and how to measure that failure.**
 
 ---
 
-**Status**: ✓ Production Ready  
-**Last Updated**: 2026-03-14  
-**Framework Versions**: LangChain 0.2+, DeepEval latest, Groq API
+## 📋 Table of Contents
+
+- [Features](#features)
+- [Quick Start](#quick-start)
+- [Installation](#installation)
+- [Configuration](#configuration)
+- [Project Structure](#project-structure)
+- [Usage](#usage)
+- [Evaluation Metrics](#evaluation-metrics)
+- [Test Cases](#test-cases)
+- [Results & Analysis](#results--analysis)
+- [Architecture](#architecture)
+- [Supported LLM Providers](#supported-llm-providers)
+- [Troubleshooting](#troubleshooting)
+- [Contributing](#contributing)
+- [References](#references)
+
+---
+
+## ✨ Features
+
+### Core Functionality
+- **RAG Pipeline**: Documents → Chunking → Vector Embeddings → ChromaDB → Retrieval + LLM Generation
+- **Multi-Provider LLM Support**: Groq (free), OpenAI, and Anthropic
+- **DeepEval Metrics**: Hallucination, Faithfulness, Answer Relevancy, Contextual Recall
+- **Test Case Management**: YAML-based test definition with expected answers and source context
+- **Evaluation Dashboard**: Streamlit UI for interactive evaluation and visualization
+
+### User Interfaces
+- **Streamlit Web UI**: Interactive Q&A interface with real-time evaluation
+- **FastAPI REST API**: RESTful endpoints for programmatic access
+- **Command-Line Tools**: Direct Python scripts for evaluation runs
+
+---
+
+## 🚀 Quick Start
+
+### Prerequisites
+- Python 3.8+
+- A free Groq API key (recommended) OR OpenAI API key
+
+### 1. Clone and Setup
+
+```bash
+git clone <repository-url>
+cd rag_eval_poc
+python -m venv venv
+venv\Scripts\activate  # Windows
+# or: source venv/bin/activate  # macOS/Linux
+```
+
+### 2. Install Dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+### 3. Configure Environment
+
+Create a `.env` file in the `config/` folder:
+
+```env
+# Choose your LLM provider (groq, openai)
+LLM_PROVIDER=groq
+GROQ_API_KEY=your_groq_api_key_here
+GROQ_MODEL=llama-3.3-70b-versatile
+
+# OR for OpenAI:
+# OPENAI_API_KEY=your_openai_key_here
+```
+
+Get a free Groq API key at [console.groq.com](https://console.groq.com)
+
+### 4. Run the Application
+
+```bash
+# Streamlit UI (recommended for exploration)
+python run_app.py
+
+# FastAPI Server
+python run_api.py
+
+# Run evaluation tests
+python tests/evaluation/run_eval.py
+```
+
+---
+
+## 📦 Installation
+
+### Full Setup with Virtual Environment
+
+```bash
+# Create virtual environment
+python -m venv venv
+venv\Scripts\activate
+
+# Install all dependencies
+pip install -r requirements.txt
+
+# Verify installation
+python -c "import deepeval, langchain, chromadb; print('✓ All dependencies installed')"
+```
+
+### Key Dependencies
+
+| Package | Version | Purpose |
+|---------|---------|---------|
+| `langchain` | ≥0.2.0 | LLM framework and RAG chains |
+| `chromadb` | Latest | Vector database for embeddings |
+| `deepeval` | Latest | LLM evaluation metrics framework |
+| `sentence-transformers` | ≥2.0.0 | Embedding generation |
+| `streamlit` | ≥1.28.0 | Web UI framework |
+| `fastapi` | ≥0.104.0 | REST API framework |
+| `groq` | ≥0.9.0 | Groq LLM API client |
+
+---
+
+## ⚙️ Configuration
+
+### Environment Variables
+
+Set these in `config/.env`:
+
+```env
+# LLM Provider
+LLM_PROVIDER=groq                           # groq, openai, anthropic
+GROQ_API_KEY=your_key_here                  # For Groq (free)
+GROQ_MODEL=llama-3.3-70b-versatile          # Groq model selection
+
+# OpenAI (alternative)
+OPENAI_API_KEY=your_key_here                # For OpenAI API
+OPENAI_API_BASE=https://api.openai.com/v1   # Optional custom endpoint
+
+# Optional
+DOCUMENT_PATH=/custom/path/to/documents     # Custom document directory
+```
+
+### Application Configuration
+
+Edit [src/config.py](src/config.py) for system settings:
+
+```python
+# Document Processing
+PDF_CHUNK_SIZE = 800          # Characters per chunk
+PDF_CHUNK_OVERLAP = 100       # Character overlap between chunks
+RETRIEVER_K = 1               # Number of documents to retrieve
+
+# Vector Store
+VECTOR_STORE_TYPE = "chroma"  # Embedding storage backend
+```
+
+---
+
+## 📁 Project Structure
+
+```
+rag_eval_poc/
+├── README.md                          # This file
+├── requirements.txt                   # Python dependencies
+├── run_app.py                         # Entry point: Streamlit UI
+├── run_api.py                         # Entry point: FastAPI server
+├── TO_DO.md                           # Project scope & roadmap
+│
+├── config/
+│   ├── .env                           # Environment variables (DO NOT COMMIT)
+│   └── .streamlit/
+│       └── config.toml                # Streamlit settings
+│
+├── src/
+│   ├── app.py                         # Streamlit web interface
+│   ├── api.py                         # FastAPI REST server
+│   ├── config.py                      # Configuration management
+│   ├── demo.py                        # RAG bot demonstration
+│   ├── evaluation.py                  # Evaluation orchestration
+│   ├── validators.py                  # Input/output validation
+│   │
+│   ├── rag/
+│   │   ├── __init__.py
+│   │   ├── loader.py                  # Document loading utilities
+│   │   ├── vector_store.py            # ChromaDB integration
+│   │   └── rag_chain.py               # LangChain RAG pipeline
+│   │
+│   ├── data/
+│   │   └── documents/
+│   │       └── document.txt           # Sample document
+│   │
+│   └── chroma_db/                     # Vector database storage
+│       ├── chroma.sqlite3
+│       └── [embedding collections]/
+│
+├── tests/
+│   ├── evaluation/
+│   │   ├── test_cases.yaml            # 20 test questions (YAML format)
+│   │   ├── run_eval.py                # Evaluation runner script
+│   │   └── groq_model.py              # Groq-specific evaluation
+│   │
+│   └── results/
+│       ├── evaluation_report_1.md     # Markdown evaluation reports
+│       ├── evaluation_report_2.md
+│       ├── evaluation_results_1.json  # JSON results for analysis
+│       └── evaluation_results_2.json
+```
+
+---
+
+## 🎮 Usage
+
+### Interactive Web UI (Recommended)
+
+```bash
+python run_app.py
+```
+
+Visit `http://localhost:8501` to:
+- Ask questions to the RAG bot
+- Run single-question evaluations
+- View evaluation metrics in real-time
+- Analyze historical results with visualizations
+
+### REST API Server
+
+```bash
+python run_api.py
+```
+
+Start at `http://localhost:8000` with:
+- `/docs` - Interactive API documentation (Swagger)
+- `/health` - Health check endpoint
+- `/ask` - Query the RAG bot
+- `/evaluate` - Evaluate a query
+
+### Example API Request
+
+```bash
+curl -X POST http://localhost:8000/ask \
+  -H "Content-Type: application/json" \
+  -d '{"question": "What is RAG?"}'
+```
+
+### Command-Line Evaluation
+
+```bash
+# Run full evaluation suite
+python tests/evaluation/run_eval.py
+
+# Run with Groq backend
+python tests/evaluation/groq_model.py
+```
+
+---
+
+## 🎯 Evaluation Metrics
+
+This project uses **4 core DeepEval metrics**:
+
+### 1. **Hallucination Score** (0-1, higher is better)
+- **Measures**: Does the bot invent information not in the source documents?
+- **Use Case**: Catches confident false statements
+- **Example**: Q: "Does the company have an office in Mars?" → Bot: "Yes, in downtown Mars" → Hallucination detected
+
+### 2. **Faithfulness Score** (0-1, higher is better)
+- **Measures**: Does the answer stick to source material or add external knowledge?
+- **Use Case**: Ensures bot uses provided documents, not training data
+- **Example**: Q: "What happened in 1969?" → Bot uses Wikipedia instead of documents → Unfaithful
+
+### 3. **Answer Relevancy Score** (0-1, higher is better)
+- **Measures**: Does the answer actually address the question asked?
+- **Use Case**: Catches off-topic or rambling responses
+- **Example**: Q: "What's the price?" → Bot: "Companies exist" → Irrelevant
+
+### 4. **Contextual Recall Score** (0-1, higher is better)
+- **Measures**: What percentage of necessary context was retrieved?
+- **Use Case**: Identifies retrieval failures
+- **Example**: Q requires 3 documents but only 1 retrieved → Low recall
+
+---
+
+## 🧪 Test Cases
+
+### Test Case Format (YAML)
+
+Test cases are defined in [tests/evaluation/test_cases.yaml](tests/evaluation/test_cases.yaml):
+
+```yaml
+- id: "Q1"
+  category: "straightforward"
+  question: "What is the main purpose of this document?"
+  expected_answer: "The document describes..."
+  source_context: "Section 1, Paragraph 2"
+
+- id: "Q2"
+  category: "tricky"
+  question: "What happens when you combine information from page 3 and page 5?"
+  expected_answer: "..."
+  source_context: "Page 3 + Page 5"
+
+- id: "Q3"
+  category: "unanswerable"
+  question: "What color is the author's car?"
+  expected_answer: "This information is not in the provided documents."
+  source_context: "Not included"
+```
+
+### Test Distribution
+
+- **10 Straightforward**: Answers clearly in documents
+- **5 Tricky**: Requires combining multiple chunks or contextual reasoning
+- **5 Unanswerable**: Correct answer is "I don't know" or "not in documents"
+
+---
+
+## 📊 Results & Analysis
+
+### Result Files
+
+Evaluation results are stored in `tests/results/`:
+
+- `evaluation_report_X.md` - Human-readable markdown reports
+- `evaluation_results_X.json` - Machine-readable result data
+
+### Example Analysis
+
+```python
+import json
+
+with open('tests/results/evaluation_results_1.json') as f:
+    results = json.load(f)
+
+# Analyze metric scores
+for test in results['tests']:
+    print(f"Q{test['id']}: Hallucination={test['hallucination_score']:.2f}, "
+          f"Faithfulness={test['faithfulness_score']:.2f}")
+
+# Identify patterns
+failed_tests = [t for t in results['tests'] if t['overall_score'] < 0.7]
+print(f"\nFailed Tests: {len(failed_tests)}/{len(results['tests'])}")
+```
+
+### Key Insights to Look For
+
+1. **Hallucination Patterns**: Which question types trigger false information?
+2. **Retrieval Issues**: Do tricky questions fail due to incomplete context?
+3. **Metric Correlation**: Do all metrics agree, or do they catch different issues?
+4. **False Positives**: Which failures are metric errors vs. actual bot errors?
+5. **Coverage**: How many real failures does structured evaluation catch?
+
+---
+
+## 🏗️ Architecture
+
+### RAG Pipeline Flow
+
+```
+Documents
+    ↓
+[PDF Loader] → Text extraction & cleaning
+    ↓
+[Text Splitter] → 800-char chunks with 100-char overlap
+    ↓
+[Embeddings] → sentence-transformers model
+    ↓
+[ChromaDB] → Vector storage & indexing
+    ↓
+User Question
+    ↓
+[Retriever] → Fetch top-K relevant documents
+    ↓
+[LLM Chain] → (Question + Context) → Answer (Groq/OpenAI)
+    ↓
+[Evaluator] → DeepEval metrics (Hallucination, Faithfulness, etc.)
+    ↓
+Results & Visualization
+```
+
+### Component Responsibilities
+
+| Module | Purpose |
+|--------|---------|
+| `rag/loader.py` | PDF/TXT document loading |
+| `rag/vector_store.py` | ChromaDB initialization & retrieval |
+| `rag/rag_chain.py` | LangChain retrieval chain |
+| `demo.py` | RAG bot orchestration |
+| `evaluation.py` | DeepEval integration & scoring |
+| `validators.py` | Input/output validation |
+| `app.py` | Streamlit UI |
+| `api.py` | FastAPI REST server |
+
+---
+
+## 🤖 Supported LLM Providers
+
+### Groq (Recommended - Free)
+
+- **Cost**: Free tier includes generous limits
+- **Models**: `llama-3.3-70b-versatile` (recommended), `llama-3.1-405b-reasoning`
+- **Speed**: ~150-300 tokens/second
+- **Signup**: [console.groq.com](https://console.groq.com)
+
+```env
+LLM_PROVIDER=groq
+GROQ_API_KEY=your_key
+GROQ_MODEL=llama-3.3-70b-versatile
+```
+
+### OpenAI
+
+- **Cost**: ~$0.03 per 1K input tokens (gpt-4o)
+- **Models**: `gpt-4o`, `gpt-4-turbo`, `gpt-3.5-turbo`
+- **Quality**: Highest quality (best for evaluation judge)
+
+```env
+LLM_PROVIDER=openai
+OPENAI_API_KEY=your_key
+```
+
+### Switching Providers
+
+Change `LLM_PROVIDER` in `.env` and restart the application. All components auto-detect and use the configured provider.
+
+---
+
+## 🛠️ Troubleshooting
+
+### Common Issues
+
+#### Q: "API key not found"
+```
+ERROR: GROQ_API_KEY not set in environment
+```
+
+**Solution**: Create `config/.env` with your API key:
+```env
+GROQ_API_KEY=your_actual_key_here
+```
+
+#### Q: "ChromaDB connection error"
+**Solution**:
+```bash
+# Remove corrupted database
+rm -rf src/chroma_db
+
+# Restart application to rebuild
+python run_app.py
+```
+
+#### Q: "No documents found"
+**Solution**: Add documents to `src/data/documents/`:
+```bash
+cp your_documents.pdf src/data/documents/
+# Application auto-reloads on next query
+```
+
+#### Q: Slow response times
+**Solution**: Reduce chunk retrieval:
+```python
+# In src/config.py
+RETRIEVER_K = 1  # Retrieve fewer chunks
+```
+
+#### Q: "Module not found" errors
+```bash
+# Ensure you're in the project root and venv is activated
+cd rag_eval_poc
+venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+---
+
+## 📚 Learning Resources
+
+### Background Reading
+Before diving in, understand these concepts:
+
+1. **RAG (Retrieval-Augmented Generation)**
+   - Augmenting LLMs with external documents to reduce hallucination
+
+2. **Vector Embeddings & Semantic Search**
+   - How documents are converted to vectors and matched to queries
+
+3. **LLM Hallucination**
+   - When models confidently produce false information
+
+4. **DeepEval Metrics**
+   - Structured techniques for measuring LLM output quality
+
+See **GenAI Concepts Glossary (AICOE-11)** for beginner-friendly definitions.
+
+### Official Documentation
+- [DeepEval Docs](https://docs.confident-ai.com/)
+- [LangChain Docs](https://docs.langchain.com/)
+- [ChromaDB Docs](https://docs.trychroma.com/)
+- [Streamlit Docs](https://docs.streamlit.io/)
+
+---
+
+## 🔄 Project Workflow
+
+### Step-by-Step Guide
+
+1. **Setup** (30 mins)
+   - Install dependencies
+   - Configure API key
+   - Add sample documents
+
+2. **Build RAG Bot** (1-2 hours)
+   - Load documents into ChromaDB
+   - Test retrieval manually
+   - Verify LLM chain works
+
+3. **Create Test Cases** (1-2 hours) ← Most Important
+   - Write 20 questions in YAML
+   - Mix straightforward, tricky, and unanswerable
+   - Document expected answers
+
+4. **Run Evaluation** (30 mins)
+   - Execute test suite: `python tests/evaluation/run_eval.py`
+   - Collect results and metrics
+
+5. **Analyze Results** (2-3 hours)
+   - Which metrics caught which issues?
+   - Which were false positives/negatives?
+   - What does "good enough" look like?
+
+6. **Document Findings**
+   - Write evaluation report
+   - Compare manual vs. automated testing
+   - Provide recommendations
+
+---
+
+## 🤝 Contributing
+
+This is a POC for learning purposes. Contributions welcome!
+
+### Areas for Enhancement
+- [ ] Additional evaluation metrics (ROUGE, BLEU, BERTScore)
+- [ ] Batch evaluation for large test suites
+- [ ] Result visualization dashboard
+- [ ] Multi-document Q&A support
+- [ ] Custom prompt templates
+- [ ] Performance benchmarking
+
+### Development Setup
+
+```bash
+# Create development branch
+git checkout -b feature/your-feature
+
+# Make changes, test locally
+python -m pytest tests/  # When tests are added
+
+# Submit pull request
+```
+
+---
+
+## 📝 License
+
+[Specify your license here]
+
+---
+
+## 📞 Support & Questions
+
+- **Issues**: Create an issue on GitHub
+- **Questions**: Contact the AICOE team
+- **Learning**: See the Background Reading section above
+
+---
+
+## 🎓 Key Takeaways
+
+By completing this POC, you'll understand:
+
+✅ How RAG systems work and when they hallucinate  
+✅ Why structured evaluation catches problems manual testing misses  
+✅ How to measure LLM output quality with metrics  
+✅ What "good enough" really means for GenAI apps  
+✅ Practical tools (DeepEval, LangChain, ChromaDB) for evaluation  
+
+**The key insight**: Evaluation metrics aren't perfect, but they're far more scalable and consistent than manual spot-checking. The combination of structured evaluation + human analysis is how you build reliable GenAI systems.
+
+---
+
+**Last Updated**: March 2026  
+**Status**: Active POC  
+**Maintained By**: AICOE Team
+ 

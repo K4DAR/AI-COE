@@ -1,4 +1,5 @@
-"""
+
+​"""
 Enterprise RAG Intelligence Platform
 Professional Streamlit UI for Document AI Systems
 """
@@ -12,6 +13,8 @@ import logging
 import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
+import shutil
+import gc
 
 from config import config
 from validators import InputValidator, OutputValidator
@@ -192,7 +195,7 @@ def display_header():
 
     <p>
     Enterprise Document AI powered by Retrieval-Augmented Generation.
-    Ask questions and retrieve knowledge from your documents instantly.
+    Ask questions and retrieve knowledge.
     </p>
 
     </div>
@@ -825,18 +828,35 @@ def main():
             )
 
             if st.button("Reset Vector Database"):
-                """Reset the vector store if there are embedding mismatches"""
-                import shutil
-                from pathlib import Path
+
                 db_path = Path("src/chroma_db")
-                if db_path.exists():
-                    try:
+
+                try:
+                    #  Step 1: Release RAG bot (IMPORTANT)
+                    if "bot" in st.session_state and st.session_state.bot is not None:
+                        try:
+                            if hasattr(st.session_state.bot, "vector_store"):
+                                st.session_state.bot.vector_store = None
+                            if hasattr(st.session_state.bot, "qa_chain"):
+                                st.session_state.bot.qa_chain = None
+                        except Exception:
+                            pass
+
+                    #  Step 2: Clear session references
+                    st.session_state.bot = None
+                    st.session_state.bot_initialized = False
+
+                    #  Step 3: Force garbage collection
+                    gc.collect()
+
+                    #  Step 4: Delete DB
+                    if db_path.exists():
                         shutil.rmtree(db_path)
-                        st.success("✓ Vector database reset. Please reload documents.")
-                    except Exception as e:
-                        st.error(f"Failed to reset database: {str(e)}")
-                else:
-                    st.info("No database found to reset")
+
+                    st.success("✓ Vector database reset successfully")
+
+                except Exception as e:
+                    st.error(f"Failed to reset database: {str(e)}")
 
             st.write("---")
 
