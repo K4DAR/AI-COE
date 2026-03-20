@@ -1,9 +1,3 @@
-
-​"""
-Enterprise RAG Intelligence Platform
-Professional Streamlit UI for Document AI Systems
-"""
-
 import streamlit as st
 import json
 import time
@@ -191,7 +185,7 @@ def display_header():
     st.markdown("""
     <div class="hero">
 
-    <h1>RAG Intelligence Platform</h1>
+    <h1>RAG (Retrieval-Augmented Generation) Platform</h1>
 
     <p>
     Enterprise Document AI powered by Retrieval-Augmented Generation.

@@ -32,7 +32,7 @@ class Config:
     GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")  # Fast & free model
     
     # Temperature for all providers
-    OPENAI_TEMPERATURE = 0.0
+    OPENAI_TEMPERATURE = 0.7
 
     # Document Loading Configuration
     PDF_CHUNK_SIZE = 800
