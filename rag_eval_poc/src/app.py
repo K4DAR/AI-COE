@@ -12,6 +12,8 @@ import logging
 import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
+import shutil
+import gc
 
 from config import config
 from validators import InputValidator, OutputValidator
@@ -72,7 +74,43 @@ html, body, [class*="css"] {
     border-radius: 12px;
     box-shadow: 0 6px 18px rgba(0,0,0,0.05);
 }
+.metric-bar-card {
+    padding: 16px;
+    border-radius: 12px;
+    margin-bottom: 12px;
 
+    background: rgba(255,255,255,0.05);  /* SAFE */
+    color: white;
+
+    border: 1px solid rgba(255,255,255,0.08);
+}
+
+.metric-header {
+    display: flex;
+    justify-content: space-between;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.metric-bar-bg {
+    width: 100%;
+    height: 10px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.metric-bar-fill {
+    height: 100%;
+    border-radius: 999px;
+    transition: width 0.6s ease;
+}
+
+.metric-footer {
+    margin-top: 6px;
+    font-size: 12px;
+    opacity: 0.8;
+}
 
 /* CHAT WINDOW */
 
@@ -192,7 +230,7 @@ def display_header():
 
     <p>
     Enterprise Document AI powered by Retrieval-Augmented Generation.
-    Ask questions and retrieve knowledge from your documents instantly.
+    Ask questions and retrieve knowledge.
     </p>
 
     </div>
@@ -323,17 +361,60 @@ def display_sources(sources):
 # =========================================================
 
 def display_metric_card(metric_name: str, score: float, threshold: float, passed: bool):
-    """Display individual metric card"""
-    color = "#10b981" if passed else "#ef4444"  # Green or Red
-    status = "✓ PASS" if passed else "✗ FAIL"
-    
-    st.markdown(f"""
-    <div style="background: white; padding: 20px; border-radius: 10px; 
-                border-left: 4px solid {color}; margin-bottom: 10px;">
-        <b>{metric_name}</b><br>
-        Score: <span style="font-size: 20px; font-weight: bold;">{score:.2f}</span> {status}
-    </div>
-    """, unsafe_allow_html=True)
+
+    # Normalize metric name
+    name = metric_name.lower()
+
+    # 🎯 Special logic for hallucination
+    if "hallucination" in name:
+        # High = bad → red increases with score
+        if score > 0.7:
+            color = "#ef4444"   # strong red
+        elif score > 0.3:
+            color = "#f59e0b"   # orange warning
+        else:
+            color = "#3b82f6"   # blue (good low hallucination)
+
+    else:
+        # Normal metrics (high = good)
+        if score > 0.7:
+            color = "#10b981"   # green
+        elif score > 0.4:
+            color = "#f59e0b"   # orange
+        else:
+            color = "#ef4444"   # red
+
+    # Layout
+    col1, col2 = st.columns([3, 1])
+
+    with col1:
+        st.markdown(f"**{metric_name}**")
+    with col2:
+        st.markdown(f"**{'PASS' if passed else 'FAIL'}**")
+
+    # Progress bar
+    st.markdown(
+        f"""
+        <div style="
+            width:100%;
+            height:8px;
+            background:rgba(255,255,255,0.1);
+            border-radius:999px;
+            overflow:hidden;
+        ">
+            <div style="
+                width:{int(score*100)}%;
+                height:100%;
+                background:{color};
+                border-radius:999px;
+                transition:0.4s;
+            "></div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+    st.caption(f"Score: {score:.2f} / 1.00")
 
 
 def display_evaluation_test_cases():
@@ -448,14 +529,19 @@ def display_single_test_evaluation():
             
             for idx, (metric_name, metric_data) in enumerate(metrics.items()):
                 with cols[idx % 2]:
+
                     score = metric_data.get("score")
+                    passed = metric_data.get("passed", False)
+
                     if score is not None:
-                        passed = metric_data.get("passed", False)
-                        display_metric_card(metric_name, score, 
-                                          metric_data.get("threshold", 0), passed)
+                        display_metric_card(
+                            metric_name,
+                            score,
+                            metric_data.get("threshold", 0),
+                            passed
+                        )
                     else:
-                        error_msg = metric_data.get("error", "Unknown error")
-                        st.warning(f"{metric_name}: {error_msg}")
+                        st.warning(f"{metric_name}: No score")
             
             # Show retrieved context
             st.write("---")
@@ -566,118 +652,193 @@ def serialize_chat(history):
     return serialized
 
 def display_evaluation_results():
-    """Display evaluation results and metrics"""
-    st.subheader("Evaluation Results")
-    
-    if not st.session_state.evaluation_results:
-        st.info("ℹ Run batch evaluation to see results here")
-        return
-    
-    # Get summary
-    if st.session_state.evaluator is None:
-        st.session_state.evaluator = UIEvaluator(st.session_state.bot.qa_chain)
-    
-    summary = st.session_state.evaluator.get_results_summary(st.session_state.evaluation_results)
-    
-    # Display metrics summary
-    st.write("**Overall Performance:**")
-    col1, col2, col3, col4 = st.columns(4)
-    with col1:
-        st.metric("Total Tests", summary["total_tests"])
-    with col2:
-        st.metric("Passed", summary["passed_tests"])
-    with col3:
-        st.metric("Failed", summary["failed_tests"])
-    with col4:
-        pass_rate = (summary["passed_tests"] / summary["total_tests"] * 100) if summary["total_tests"] > 0 else 0
-        st.metric("Pass Rate", f"{pass_rate:.1f}%")
-    
-    st.write("---")
-    
-    # Metrics visualization
-    st.write("**Metric Performance:**")
-    
-    metric_cols = st.columns(2)
-    for idx, (metric_name, metric_stats) in enumerate(summary.get("metrics", {}).items()):
-        with metric_cols[idx % 2]:
-            st.write(f"**{metric_name}:**")
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                st.metric("Average", f"{metric_stats['avg_score']:.2f}")
-            with col2:
-                st.metric("Min-Max", f"{metric_stats['min_score']:.2f} - {metric_stats['max_score']:.2f}")
-            with col3:
-                st.metric("Passed", f"{metric_stats['passed']}/{metric_stats['total']}")
-    
-    st.write("---")
-    
-    # Category breakdown
-    if summary.get("by_category"):
-        st.write("**Results by Category:**")
-        category_data = summary["by_category"]
-        
-        df_category = pd.DataFrame([
-            {
-                "Category": cat.title(),
-                "Total": stats["count"],
-                "Passed": stats["passed"],
-                "Failed": stats["count"] - stats["passed"]
-            }
-            for cat, stats in category_data.items()
-        ])
-        
-        st.dataframe(df_category, width='stretch')
-    
-    st.write("---")
-    
-    # Detailed results table
-    st.write("**Detailed Test Results:**")
-    
-    # Prepare data for table
-    results_data = []
-    for result in st.session_state.evaluation_results:
-        if "error" not in result:
-            metrics = result.get("metrics", {})
-            passed_count = sum(1 for m in metrics.values() if m.get("passed", False))
-            total_metrics = len([m for m in metrics.values() if m.get("score") is not None])
-            
-            results_data.append({
-                "ID": result["test_id"],
-                "Category": result.get("category", "N/A").title(),
-                "Question": result["question"][:60] + "...",
-                "Status": "✓ PASS" if result["overall_passed"] else "✗ FAIL",
-                "Metrics": f"{passed_count}/{total_metrics}"
-            })
-    
-    if results_data:
-        df_results = pd.DataFrame(results_data)
-        st.dataframe(df_results, width='stretch')
-    
-    st.write("---")
-    
-    # Export results
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("Export Results as JSON"):
-            try:
-                json_file = st.session_state.evaluator.export_results_json(
-                    results=st.session_state.evaluation_results
-                )
-                with open(json_file, 'r') as f:
-                    st.download_button(
-                    label="Export Chat",
-                    data=json.dumps({
-                        "timestamp": datetime.now().isoformat(),
-                        "messages": serialize_chat(st.session_state.conversation_history),
-                        "stats": st.session_state.stats
-                    }, indent=2),
-                    file_name=f"rag_chat_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
-                    mime="application/json"
-                )
-                st.success(f"✓ Results exported to {json_file}")
-            except Exception as e:
-                st.error(f"✗ Error exporting: {str(e)}")
+    st.subheader("Evaluation Overview")
 
+    if not st.session_state.evaluation_results:
+        st.info("Run batch evaluation to see results")
+        return
+
+    summary = st.session_state.evaluator.get_results_summary(
+        st.session_state.evaluation_results
+    )
+
+    # ==============================
+    # 1. EXECUTIVE SUMMARY
+    # ==============================
+
+    col1, col2, col3 = st.columns(3)
+
+    pass_rate = (
+        summary["passed_tests"] / summary["total_tests"] * 100
+        if summary["total_tests"] > 0 else 0
+    )
+
+    with col1:
+        st.metric("Pass Rate", f"{pass_rate:.1f}%")
+
+    with col2:
+        st.metric("Total Tests", summary["total_tests"])
+
+    with col3:
+        status = "Good" if pass_rate > 75 else "Needs Improvement"
+        st.metric("System Health", status)
+
+    st.divider()
+
+    # ==============================
+    # 2. METRIC PERFORMANCE (CLEAN)
+    # ==============================
+
+    st.markdown("### Key Metrics")
+
+    for metric_name, metric_stats in summary.get("metrics", {}).items():
+        score = metric_stats["avg_score"]
+
+        # reuse your clean progress UI
+        display_metric_card(
+            metric_name,
+            score,
+            0.5,
+            score > 0.5
+        )
+
+    st.divider()
+
+    # ==============================
+    # 3. DETAILS (COLLAPSIBLE)
+    # ==============================
+
+    with st.expander("View Detailed Results"):
+
+        # Category breakdown
+        if summary.get("by_category"):
+            df_category = pd.DataFrame([
+                {
+                    "Category": cat.title(),
+                    "Total": stats["count"],
+                    "Passed": stats["passed"],
+                    "Pass Rate (%)": round(
+                        stats["passed"] / stats["count"] * 100, 1
+                    )
+                }
+                for cat, stats in summary["by_category"].items()
+            ])
+
+            st.dataframe(df_category, use_container_width=True)
+
+        st.write("---")
+
+        # Test table
+        results_data = []
+
+        for result in st.session_state.evaluation_results:
+            if "error" not in result:
+                results_data.append({
+                    "ID": result["test_id"],
+                    "Category": result.get("category", "N/A"),
+                    "Status": "PASS" if result["overall_passed"] else "FAIL"
+                })
+
+        if results_data:
+            st.dataframe(pd.DataFrame(results_data), use_container_width=True)
+
+def display_clean_dashboard():
+    st.subheader("Evaluation Dashboard")
+
+    if not st.session_state.evaluation_results:
+        st.info("Run batch evaluation to see results")
+        return
+
+    summary = st.session_state.evaluator.get_results_summary(
+        st.session_state.evaluation_results
+    )
+
+    # ======================
+    # 1. EXECUTIVE KPI ROW
+    # ======================
+    col1, col2, col3, col4 = st.columns(4)
+
+    pass_rate = (
+        summary["passed_tests"] / summary["total_tests"] * 100
+        if summary["total_tests"] > 0 else 0
+    )
+
+    with col1:
+        st.metric("Pass Rate", f"{pass_rate:.1f}%")
+
+    with col2:
+        st.metric("Tests", summary["total_tests"])
+
+    with col3:
+        status = "Healthy" if pass_rate > 75 else "At Risk"
+        st.metric("System", status)
+
+    with col4:
+        risk = "High" if pass_rate < 60 else "Moderate" if pass_rate < 80 else "Low"
+        st.metric("Risk Level", risk)
+
+    st.divider()
+
+    # ======================
+    # 2. MAIN CONTENT
+    # ======================
+    col_left, col_right = st.columns([2, 1])
+
+    # LEFT → METRICS
+    with col_left:
+        st.markdown("### Key Metrics")
+
+        for metric_name, metric_stats in summary["metrics"].items():
+            display_metric_card(
+                metric_name,
+                metric_stats["avg_score"],
+                0.5,
+                metric_stats["avg_score"] > 0.5
+            )
+
+    # RIGHT → VISUAL
+    with col_right:
+        st.markdown("### Score Overview")
+
+        metric_names = list(summary["metrics"].keys())
+        scores = [summary["metrics"][m]["avg_score"] for m in metric_names]
+
+        fig = go.Figure()
+        fig.add_trace(go.Bar(
+            x=metric_names,
+            y=scores,
+            marker=dict(
+                color=scores,
+                colorscale="RdYlGn"
+            )
+        ))
+
+        fig.update_layout(
+            height=300,
+            margin=dict(l=10, r=10, t=20, b=20),
+            yaxis=dict(range=[0,1])
+        )
+
+        st.plotly_chart(fig, use_container_width=True)
+
+    st.divider()
+
+    # ======================
+    # 3. DRILLDOWN
+    # ======================
+    with st.expander("Detailed Results"):
+
+        # Table
+        results_data = []
+        for result in st.session_state.evaluation_results:
+            if "error" not in result:
+                results_data.append({
+                    "ID": result["test_id"],
+                    "Category": result.get("category", "N/A"),
+                    "Status": "PASS" if result["overall_passed"] else "FAIL"
+                })
+
+        st.dataframe(pd.DataFrame(results_data), use_container_width=True)
 
 def display_metrics_dashboard():
     """Display comprehensive metrics dashboard"""
@@ -716,50 +877,111 @@ def display_metrics_dashboard():
             showlegend=False
         )
         st.plotly_chart(fig_metrics, width='stretch')
-    
-    # Create pass/fail pie chart
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        fig_pie = go.Figure(data=[go.Pie(
-            labels=["Passed", "Failed"],
-            values=[summary["passed_tests"], summary["failed_tests"]],
-            marker=dict(colors=["#10b981", "#ef4444"])
-        )])
-        fig_pie.update_layout(
-            title="Pass/Fail Distribution",
-            height=400
-        )
-        st.plotly_chart(fig_pie, width='stretch')
-    
-    with col2:
-        # Category pass rates
-        if summary.get("by_category"):
-            category_names = [cat.title() for cat in summary["by_category"].keys()]
-            pass_rates = [
-                (summary["by_category"][cat]["passed"] / summary["by_category"][cat]["count"] * 100)
-                for cat in summary["by_category"].keys()
-            ]
-            
-            fig_category = go.Figure()
-            fig_category.add_trace(go.Bar(
-                x=category_names,
-                y=pass_rates,
-                marker=dict(
-                    color=pass_rates,
-                    colorscale="RdYlGn",
-                    showscale=True,
-                    colorbar=dict(title="Pass Rate %")
-                )
-            ))
-            fig_category.update_layout(
-                title="Pass Rate by Category",
-                xaxis_title="Category",
-                yaxis_title="Pass Rate (%)",
-                height=400,
-                showlegend=False
+
+    col_left, col_right = st.columns([2, 1])
+
+    with col_left:
+
+        st.subheader("Evaluation Overview")
+
+        # KPIs
+        col1, col2, col3 = st.columns(3)
+
+        pass_rate = (summary["passed_tests"] / summary["total_tests"] * 100)
+
+        with col1:
+            st.metric("Pass Rate", f"{pass_rate:.1f}%")
+
+        with col2:
+            st.metric("Tests", summary["total_tests"])
+
+        with col3:
+            status = "Healthy" if pass_rate > 75 else "At Risk"
+            st.metric("System", status)
+
+        st.divider()
+
+        st.markdown("### Key Metrics")
+
+        for metric_name, metric_stats in summary["metrics"].items():
+            display_metric_card(
+                metric_name,
+                metric_stats["avg_score"],
+                0.5,
+                metric_stats["avg_score"] > 0.5
             )
-            st.plotly_chart(fig_category, width='stretch')
+        
+    with col_right:
+
+        st.markdown("### Score Distribution")
+
+        metric_names = list(summary["metrics"].keys())
+        scores = [summary["metrics"][m]["avg_score"] for m in metric_names]
+
+        fig = go.Figure()
+
+        fig.add_trace(go.Bar(
+            x=scores,
+            y=metric_names,
+            orientation='h',
+            marker=dict(
+                color=scores,
+                colorscale="RdYlGn"
+            )
+        ))
+
+        fig.update_layout(
+            height=300,
+            margin=dict(l=10, r=10, t=20, b=20),
+            xaxis_title="Score",
+            yaxis_title=""
+        )
+
+        st.plotly_chart(fig, use_container_width=True)
+        
+    # # Create pass/fail pie chart
+    # col1, col2 = st.columns(2)
+    
+    # with col1:
+    #     fig_pie = go.Figure(data=[go.Pie(
+    #         labels=["Passed", "Failed"],
+    #         values=[summary["passed_tests"], summary["failed_tests"]],
+    #         marker=dict(colors=["#10b981", "#ef4444"])
+    #     )])
+    #     fig_pie.update_layout(
+    #         title="Pass/Fail Distribution",
+    #         height=400
+    #     )
+    #     st.plotly_chart(fig_pie, width='stretch')
+    
+    # with col2:
+    #     # Category pass rates
+    #     if summary.get("by_category"):
+    #         category_names = [cat.title() for cat in summary["by_category"].keys()]
+    #         pass_rates = [
+    #             (summary["by_category"][cat]["passed"] / summary["by_category"][cat]["count"] * 100)
+    #             for cat in summary["by_category"].keys()
+    #         ]
+            
+    #         fig_category = go.Figure()
+    #         fig_category.add_trace(go.Bar(
+    #             x=category_names,
+    #             y=pass_rates,
+    #             marker=dict(
+    #                 color=pass_rates,
+    #                 colorscale="RdYlGn",
+    #                 showscale=True,
+    #                 colorbar=dict(title="Pass Rate %")
+    #             )
+    #         ))
+            # fig_category.update_layout(
+            #     title="Pass Rate by Category",
+            #     xaxis_title="Category",
+            #     yaxis_title="Pass Rate (%)",
+            #     height=400,
+            #     showlegend=False
+            # )
+            # st.plotly_chart(fig_category, width='stretch')
 
 
 
@@ -775,7 +997,7 @@ def main():
 
     display_header()
 
-    display_kpis()
+    # display_kpis()
 
     # Create tabs for Chat and Evaluation
     tab_chat, tab_analytics, tab_evaluation = st.tabs(["Chat", "Analytics", "Evaluation"])
@@ -825,18 +1047,35 @@ def main():
             )
 
             if st.button("Reset Vector Database"):
-                """Reset the vector store if there are embedding mismatches"""
-                import shutil
-                from pathlib import Path
+
                 db_path = Path("src/chroma_db")
-                if db_path.exists():
-                    try:
+
+                try:
+                    #  Step 1: Release RAG bot (IMPORTANT)
+                    if "bot" in st.session_state and st.session_state.bot is not None:
+                        try:
+                            if hasattr(st.session_state.bot, "vector_store"):
+                                st.session_state.bot.vector_store = None
+                            if hasattr(st.session_state.bot, "qa_chain"):
+                                st.session_state.bot.qa_chain = None
+                        except Exception:
+                            pass
+
+                    #  Step 2: Clear session references
+                    st.session_state.bot = None
+                    st.session_state.bot_initialized = False
+
+                    #  Step 3: Force garbage collection
+                    gc.collect()
+
+                    #  Step 4: Delete DB
+                    if db_path.exists():
                         shutil.rmtree(db_path)
-                        st.success("✓ Vector database reset. Please reload documents.")
-                    except Exception as e:
-                        st.error(f"Failed to reset database: {str(e)}")
-                else:
-                    st.info("No database found to reset")
+
+                    st.success("✓ Vector database reset successfully")
+
+                except Exception as e:
+                    st.error(f"Failed to reset database: {str(e)}")
 
             st.write("---")
 
@@ -956,14 +1195,7 @@ def main():
                 display_batch_evaluation()
 
             with eval_tab4:
-
-                col_res, col_dash = st.columns([1, 1])
-
-                with col_res:
-                    display_evaluation_results()
-
-                with col_dash:
-                    display_metrics_dashboard()
+                display_clean_dashboard()
 
 # =========================================================
 
