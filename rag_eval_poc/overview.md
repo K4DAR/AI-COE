@@ -239,7 +239,7 @@ class Config:
     
     # LLM Provider
     LLM_PROVIDER = "groq"
-    GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+    API_KEY = os.getenv("API_KEY")
     GROQ_MODEL = "llama-3.3-70b-versatile"
     
     # Document Processing
@@ -264,7 +264,7 @@ class Config:
 Located in `config/.env`:
 ```
 LLM_PROVIDER=groq
-GROQ_API_KEY=your_key_here
+API_KEY=your_key_here
 GROQ_MODEL=llama-3.3-70b-versatile
 ```
 
@@ -411,7 +411,7 @@ Orchestrates the entire RAG pipeline: retrieval → context → prompt → gener
 ```python
 def get_llm():
     if provider == "groq":
-        return ChatGroq(model=config.GROQ_MODEL, api_key=config.GROQ_API_KEY)
+        return ChatGroq(model=config.GROQ_MODEL, api_key=config.API_KEY)
 ```
 - Loads LLM based on configured provider
 - Lazy-loads to avoid unnecessary API calls
@@ -664,7 +664,7 @@ LLM_PROVIDER=groq
 # ======================================
 # GROQ CONFIGURATION (FREE!)
 # ======================================
-GROQ_API_KEY=gsk_xxxxxxxxxxxxxxxxxxxx
+API_KEY=gsk_xxxxxxxxxxxxxxxxxxxx
 GROQ_MODEL=llama-3.3-70b-versatile
 ```
 
@@ -1370,12 +1370,12 @@ Final Report:
 
 ### Common Issues
 
-**Issue: "GROQ_API_KEY not found"**
+**Issue: "API_KEY not found"**
 ```
 Cause: API key not in .env or environment
 Fix:
 1. Create config/.env
-2. Add: GROQ_API_KEY=your_key_here
+2. Add: API_KEY=your_key_here
 3. Get free key at: console.groq.com
 ```
 

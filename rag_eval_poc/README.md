@@ -81,7 +81,7 @@ Create a `.env` file in the `config/` folder:
 ```env
 # Choose your LLM provider (groq, openai)
 LLM_PROVIDER=groq
-GROQ_API_KEY=your_groq_api_key_here
+API_KEY=your_API_KEY_here
 GROQ_MODEL=llama-3.3-70b-versatile
 
 # OR for OpenAI:
@@ -144,7 +144,7 @@ Set these in `config/.env`:
 ```env
 # LLM Provider
 LLM_PROVIDER=groq                           # groq, openai, anthropic
-GROQ_API_KEY=your_key_here                  # For Groq (free)
+API_KEY=your_key_here                  # For Groq (free)
 GROQ_MODEL=llama-3.3-70b-versatile          # Groq model selection
 
 # OpenAI (alternative)
@@ -418,7 +418,7 @@ Results & Visualization
 
 ```env
 LLM_PROVIDER=groq
-GROQ_API_KEY=your_key
+API_KEY=your_key
 GROQ_MODEL=llama-3.3-70b-versatile
 ```
 
@@ -445,12 +445,12 @@ Change `LLM_PROVIDER` in `.env` and restart the application. All components auto
 
 #### Q: "API key not found"
 ```
-ERROR: GROQ_API_KEY not set in environment
+ERROR: API_KEY not set in environment
 ```
 
 **Solution**: Create `config/.env` with your API key:
 ```env
-GROQ_API_KEY=your_actual_key_here
+API_KEY=your_actual_key_here
 ```
 
 #### Q: "ChromaDB connection error"

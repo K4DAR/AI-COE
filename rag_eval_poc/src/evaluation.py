@@ -47,15 +47,15 @@ def _get_groq_llm():
             load_dotenv(config_path, override=True)
         
         # Try to get API key from environment or config
-        groq_key = os.getenv("GROQ_API_KEY")
+        groq_key = os.getenv("API_KEY")
         if not groq_key:
             try:
-                groq_key = config.GROQ_API_KEY
+                groq_key = config.API_KEY
             except:
                 groq_key = None
         
         if not groq_key:
-            logger.warning("GROQ_API_KEY not found in environment or config")
+            logger.warning("API_KEY not found in environment or config")
             return None
         
         
@@ -233,15 +233,15 @@ class EvaluationMetrics:
         if config_path.exists():
             load_dotenv(config_path, override=True)
         
-        groq_key = os.getenv("GROQ_API_KEY") or config.GROQ_API_KEY
+        groq_key = os.getenv("API_KEY") or config.API_KEY
         if groq_key:
             return True, f"✓ Using Groq ({config.GROQ_MODEL}) for evaluation metrics"
         
         return False, (
             "Groq API Key Not Configured!\n\n"
-            "Evaluation metrics require GROQ_API_KEY.\n\n"
+            "Evaluation metrics require API_KEY.\n\n"
             "To fix:\n"
-            "1. Set GROQ_API_KEY in config/.env\n"
+            "1. Set API_KEY in config/.env\n"
             "2. Get a free key from: https://console.groq.com\n\n"
             "Groq is used for both RAG bot AND evaluation metrics."
         )
@@ -267,9 +267,9 @@ class EvaluationMetrics:
         if not groq_llm:
             error_msg = (
                 "Groq API Key Not Configured!\n\n"
-                "Evaluation metrics require GROQ_API_KEY.\n\n"
+                "Evaluation metrics require API_KEY.\n\n"
                 "To fix:\n"
-                "1. Set GROQ_API_KEY in config/.env\n"
+                "1. Set API_KEY in config/.env\n"
                 "2. Get a free key from: https://console.groq.com\n\n"
                 "Groq is used for both RAG bot AND evaluation metrics."
             )

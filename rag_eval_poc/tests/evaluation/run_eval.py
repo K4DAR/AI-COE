@@ -69,7 +69,7 @@ class RAGEvaluator:
         self.qa_chain = None
         self._setup_rag_bot()
         self.groq_llm = GroqModel(
-            api_key=os.getenv("GROQ_API_KEY") or config.GROQ_API_KEY,
+            api_key=os.getenv("API_KEY") or config.API_KEY,
             model_name=os.getenv("GROQ_MODEL") or config.GROQ_MODEL
         )
     
@@ -487,11 +487,11 @@ class RAGEvaluator:
 def main():
     """Main evaluation runner"""
     # Set up GROQ API key for DeepEval metrics
-    if config.GROQ_API_KEY:
-        os.environ["GROQ_API_KEY"] = config.GROQ_API_KEY
+    if config.API_KEY:
+        os.environ["API_KEY"] = config.API_KEY
     else:
-        logger.error("❌ GROQ_API_KEY not found in environment or config!")
-        logger.error("Please set GROQ_API_KEY in config/.env")
+        logger.error("❌ API_KEY not found in environment or config!")
+        logger.error("Please set API_KEY in config/.env")
         sys.exit(1)
     
     logger.info("Starting RAG Bot Evaluation with DeepEval")

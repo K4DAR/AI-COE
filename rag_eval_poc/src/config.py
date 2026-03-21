@@ -28,7 +28,7 @@ class Config:
     LLM_PROVIDER = os.getenv("LLM_PROVIDER", "groq").lower()
     
     # Groq Configuration (FREE - RECOMMENDED)
-    GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+    API_KEY = os.getenv("API_KEY", "")
     GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")  # Fast & free model
     
     # Temperature for all providers
@@ -64,8 +64,8 @@ class Config:
         
         # Validate based on selected provider
         if provider == "groq":
-            if not Config.GROQ_API_KEY:
-                raise ValueError("GROQ_API_KEY environment variable is not set. Get a free key at: https://console.groq.com")
+            if not Config.API_KEY:
+                raise ValueError("API_KEY environment variable is not set. Get a free key at: https://console.groq.com")
         else:
             raise ValueError(f"Invalid LLM_PROVIDER: {provider}. Use: openai, groq, or ollama")
 
