@@ -335,7 +335,7 @@ class RAGEvaluator:
                 self.results.append({
                     "test_id": test_case["id"],
                     "question": test_case.get("question", ""),
-                    "expected_answer": test_case.get("expected_answer", ""),  # ✅ ADD
+                    "expected_answer": test_case.get("expected_answer", ""),  #  ADD
                     "actual_answer": "",
                     "metrics": {},
                     "error": str(e),
@@ -490,7 +490,7 @@ def main():
     if config.API_KEY:
         os.environ["API_KEY"] = config.API_KEY
     else:
-        logger.error("❌ API_KEY not found in environment or config!")
+        logger.error(" API_KEY not found in environment or config!")
         logger.error("Please set API_KEY in config/.env")
         sys.exit(1)
     

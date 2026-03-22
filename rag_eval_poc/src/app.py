@@ -339,7 +339,7 @@ def display_chat():
             </div>
             """, unsafe_allow_html=True)
 
-            # ✅ Show sources inline
+            #  Show sources inline
             if msg.get("sources"):
                 with st.expander("Sources"):
                     for doc in msg["sources"][:3]:
@@ -382,7 +382,7 @@ def display_metric_card(metric_name: str, score: float, threshold: float, passed
     # Normalize metric name
     name = metric_name.lower()
 
-    # 🎯 Special logic for hallucination
+    #  Special logic for hallucination
     if "hallucination" in name:
         # High = bad → red increases with score
         if score > 0.7:
@@ -977,52 +977,6 @@ def display_metrics_dashboard():
         )
 
         st.plotly_chart(fig, width='stretch')
-        
-    # # Create pass/fail pie chart
-    # col1, col2 = st.columns(2)
-    
-    # with col1:
-    #     fig_pie = go.Figure(data=[go.Pie(
-    #         labels=["Passed", "Failed"],
-    #         values=[summary["passed_tests"], summary["failed_tests"]],
-    #         marker=dict(colors=["#10b981", "#ef4444"])
-    #     )])
-    #     fig_pie.update_layout(
-    #         title="Pass/Fail Distribution",
-    #         height=400
-    #     )
-    #     st.plotly_chart(fig_pie, width='stretch')
-    
-    # with col2:
-    #     # Category pass rates
-    #     if summary.get("by_category"):
-    #         category_names = [cat.title() for cat in summary["by_category"].keys()]
-    #         pass_rates = [
-    #             (summary["by_category"][cat]["passed"] / summary["by_category"][cat]["count"] * 100)
-    #             for cat in summary["by_category"].keys()
-    #         ]
-            
-    #         fig_category = go.Figure()
-    #         fig_category.add_trace(go.Bar(
-    #             x=category_names,
-    #             y=pass_rates,
-    #             marker=dict(
-    #                 color=pass_rates,
-    #                 colorscale="RdYlGn",
-    #                 showscale=True,
-    #                 colorbar=dict(title="Pass Rate %")
-    #             )
-    #         ))
-            # fig_category.update_layout(
-            #     title="Pass Rate by Category",
-            #     xaxis_title="Category",
-            #     yaxis_title="Pass Rate (%)",
-            #     height=400,
-            #     showlegend=False
-            # )
-            # st.plotly_chart(fig_category, width='stretch')
-
-
 
 # =========================================================
 # MAIN APPLICATION
@@ -1091,81 +1045,52 @@ def main():
 
                 try:
                     # =========================
-                    # 1. HARD CLOSE BOT
+                    # 1. DESTROY BOT REFERENCE
                     # =========================
-                    if "bot" in st.session_state and st.session_state.bot is not None:
-
-                        bot = st.session_state.bot
-
+                    if "bot" in st.session_state:
                         try:
-                            if hasattr(bot, "vector_store") and bot.vector_store:
-
-                                # 🔥 CRITICAL: call persist + delete collection
-                                try:
-                                    bot.vector_store.persist()
-                                except:
-                                    pass
-
-                                try:
-                                    bot.vector_store._client.reset()
-                                except:
-                                    pass
-
-                                del bot.vector_store
-
-                        except Exception as e:
-                            print("Vector store cleanup error:", e)
-
-                        try:
-                            if hasattr(bot, "qa_chain"):
-                                del bot.qa_chain
+                            del st.session_state.bot
                         except:
                             pass
 
-                    # =========================
-                    # 2. CLEAR SESSION
-                    # =========================
-                    st.session_state.bot = None
                     st.session_state.bot_initialized = False
 
                     # =========================
-                    # 3. FORCE MEMORY RELEASE
+                    # 2. FORCE MEMORY CLEANUP
                     # =========================
-                    import gc
                     gc.collect()
-
-                    # 🔥 IMPORTANT: multiple waits
                     time.sleep(2)
 
                     # =========================
-                    # 4. FORCE UNLOCK (WINDOWS FIX)
+                    # 3. WINDOWS-SAFE DELETE
                     # =========================
                     import os
 
-                    for root, dirs, files in os.walk(db_path, topdown=False):
-                        for name in files:
-                            file_path = os.path.join(root, name)
-                            try:
-                                os.chmod(file_path, 0o777)
-                            except:
-                                pass
+                    if db_path.exists():
+                        temp_path = db_path.parent / f"_delete_{int(time.time())}"
 
-                    # =========================
-                    # 5. DELETE WITH RETRY
-                    # =========================
-                    import shutil
-
-                    for i in range(5):
                         try:
-                            if db_path.exists():
-                                shutil.rmtree(db_path)
-                            break
+                            # rename first (bypasses lock)
+                            os.rename(db_path, temp_path)
+
+                            # then delete with retry
+                            for i in range(6):
+                                try:
+                                    shutil.rmtree(temp_path)
+                                    break
+                                except Exception:
+                                    time.sleep(1)
+
                         except Exception as e:
-                            time.sleep(1)
-                            if i == 4:
-                                raise e
+                            st.warning(f"Rename fallback failed: {e}")
+
+                    # =========================
+                    # 4. RE-INIT SESSION SAFELY
+                    # =========================
+                    initialize_session()
 
                     st.success("✓ Vector database reset successfully")
+                    st.rerun()
 
                 except Exception as e:
                     st.error(f"Failed to reset database: {str(e)}")
@@ -1209,7 +1134,7 @@ def main():
                     st.session_state.stats["errors"] += 1
                     return
 
-                # ✅ Add user message
+                #  Add user message
                 st.session_state.conversation_history.append({
                     "role": "user",
                     "content": question
@@ -1231,7 +1156,7 @@ def main():
                     if not is_valid:
                         st.warning("Generated answer may be low quality")
 
-                    # ✅ Add assistant message
+                    #  Add assistant message
                     st.session_state.conversation_history.append({
                         "role": "assistant",
                         "content": answer,

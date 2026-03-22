@@ -593,11 +593,11 @@ python -m pytest tests/  # When tests are added
 
 By completing this POC, you'll understand:
 
-✅ How RAG systems work and when they hallucinate  
-✅ Why structured evaluation catches problems manual testing misses  
-✅ How to measure LLM output quality with metrics  
-✅ What "good enough" really means for GenAI apps  
-✅ Practical tools (DeepEval, LangChain, ChromaDB) for evaluation  
+ How RAG systems work and when they hallucinate  
+ Why structured evaluation catches problems manual testing misses  
+ How to measure LLM output quality with metrics  
+ What "good enough" really means for GenAI apps  
+ Practical tools (DeepEval, LangChain, ChromaDB) for evaluation  
 
 **The key insight**: Evaluation metrics aren't perfect, but they're far more scalable and consistent than manual spot-checking. The combination of structured evaluation + human analysis is how you build reliable GenAI systems.
 

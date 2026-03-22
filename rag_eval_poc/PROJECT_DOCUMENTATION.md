@@ -47,16 +47,16 @@ This makes answers more accurate, verifiable, and reducible to source documents.
 ## Project Objective & Scope
 
 ### What This Project IS
-- ✅ A learning sandbox for understanding LLM evaluation
-- ✅ A demonstration of how to measure quality issues (hallucination, unfaithfulness, irrelevance)
-- ✅ A proof-of-concept with minimal complexity
-- ✅ A test bed for comparing manual vs. automated evaluation
+-  A learning sandbox for understanding LLM evaluation
+-  A demonstration of how to measure quality issues (hallucination, unfaithfulness, irrelevance)
+-  A proof-of-concept with minimal complexity
+-  A test bed for comparing manual vs. automated evaluation
 
 ### What This Project IS NOT
-- ❌ A production-ready RAG system
-- ❌ A reusable evaluation framework
-- ❌ A complete CI/CD pipeline
-- ❌ An optimization benchmark for multiple models
+-  A production-ready RAG system
+-  A reusable evaluation framework
+-  A complete CI/CD pipeline
+-  An optimization benchmark for multiple models
 
 ---
 
@@ -361,15 +361,15 @@ embeddings = HuggingFaceEmbeddings(
     model_kwargs={"device": "cpu"}     # Run on CPU (no GPU needed)
 )
 ```
-- ✅ Free (no API key)
-- ✅ Fast (384-dim vectors)
-- ✅ Quality (trained on 215M+ sentence pairs)
-- ✅ No external calls
+-  Free (no API key)
+-  Fast (384-dim vectors)
+-  Quality (trained on 215M+ sentence pairs)
+-  No external calls
 
 **Option 2: TF-IDF Fallback**
-- ✅ Works without HuggingFace
-- ❌ Less accurate than transformers
-- ❌ No semantic understanding
+-  Works without HuggingFace
+-  Less accurate than transformers
+-  No semantic understanding
 
 #### ChromaDB: Vector Database
 
@@ -609,10 +609,10 @@ Three categories:
 #### Groq as Judge LLM
 
 Why use Groq instead of OpenAI?
-- ✅ Free (unlimited requests)
-- ✅ Fast (optimized for reasoning)
-- ✅ Works offline-like (no rate limits)
-- ❌ Less guaranteed accuracy than GPT-4
+-  Free (unlimited requests)
+-  Fast (optimized for reasoning)
+-  Works offline-like (no rate limits)
+-  Less guaranteed accuracy than GPT-4
 
 ```python
 class GroqModel(DeepEvalBaseLLM):
@@ -671,7 +671,7 @@ GROQ_MODEL=llama-3.3-70b-versatile
 - 🔒 **Security**: API keys never in version control
 - 🔄 **Flexibility**: Easy to switch between environments
 - 🚀 **Deployment**: Different keys for dev/test/prod
-- ✅ **Best Practice**: Industry standard
+-  **Best Practice**: Industry standard
 
 ### config/.streamlit/config.toml
 
@@ -877,16 +877,16 @@ python tests/evaluation/run_eval.py
 #### The Problem It Solves
 
 Manual testing:
-- ❌ Doesn't scale (20 questions manually evaluated = 30 min)
-- ❌ Subjective ("looks good to me" vs. "missed this detail")
-- ❌ Misses subtle issues (hallucinations that sound plausible)
-- ❌ Can't measure improvement over time
+-  Doesn't scale (20 questions manually evaluated = 30 min)
+-  Subjective ("looks good to me" vs. "missed this detail")
+-  Misses subtle issues (hallucinations that sound plausible)
+-  Can't measure improvement over time
 
 Automated evaluation:
-- ✅ Scalable (1000 questions in seconds)
-- ✅ Consistent metrics (same standard each time)
-- ✅ Catches subtle issues (LLM as judge)
-- ✅ Quantified progress (scores improve over time)
+-  Scalable (1000 questions in seconds)
+-  Consistent metrics (same standard each time)
+-  Catches subtle issues (LLM as judge)
+-  Quantified progress (scores improve over time)
 
 #### How DeepEval Works
 
@@ -1039,9 +1039,9 @@ Example output:
 ```
 
 **Interpreting Results**
-- ✅ green (0.7-1.0): Good performance
+-  green (0.7-1.0): Good performance
 - 🟡 yellow (0.5-0.7): Acceptable but risky
-- ❌ red (0.0-0.5): Clear failure
+-  red (0.0-0.5): Clear failure
 
 ---
 
@@ -1109,9 +1109,9 @@ Query: "What is AI?"
 Embedding: [0.1, 0.5, 0.3, ...]
 
 Compare to all document embeddings:
-Chunk1: [0.11, 0.51, 0.31, ...] → Similarity = 0.98 ✅ TOP MATCH
-Chunk2: [0.3, 0.2, 0.9, ...]   → Similarity = 0.42 ❌
-Chunk3: [0.01, 0.02, 0.03, ...] → Similarity = 0.15 ❌
+Chunk1: [0.11, 0.51, 0.31, ...] → Similarity = 0.98  TOP MATCH
+Chunk2: [0.3, 0.2, 0.9, ...]   → Similarity = 0.42 
+Chunk3: [0.01, 0.02, 0.03, ...] → Similarity = 0.15 
 ```
 
 ### Prompt Engineering
@@ -1242,7 +1242,7 @@ Query Embedding (HuggingFace):
            ↓
 Vector Similarity Search (ChromaDB):
   Compare to all chunks in database
-  Chunk1: "AI is computer systems..." → Sim=0.94 ✅
+  Chunk1: "AI is computer systems..." → Sim=0.94 
   Chunk2: "ML is subset of AI..." → Sim=0.82
   Chunk3: "NLP processes text..." → Sim=0.45
            ↓
