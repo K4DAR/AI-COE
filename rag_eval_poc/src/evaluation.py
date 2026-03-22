@@ -8,6 +8,7 @@ import logging
 from pathlib import Path
 from typing import Dict, List, Any, Tuple, Optional
 from datetime import datetime
+from deepeval import test_case
 from streamlit import context, metric
 from streamlit import metric
 import yaml
@@ -458,9 +459,40 @@ class UIEvaluator:
         results = []
         
         for idx, test_case in enumerate(test_cases):
-            result = self.evaluate_single_test(test_case)
+            try:
+                result = self.evaluate_single_test(test_case)
+
+                # Ensure structure consistency
+                if "metrics" not in result:
+                    result["metrics"] = {}
+                    result["overall_passed"] = False
+                    result["error"] = result.get("error", "Unknown error")
+
+            except Exception as e:
+                error_msg = str(e)
+
+                if "429" in error_msg or "rate limit" in error_msg.lower():
+                    error_msg = "Rate limit reached. Please retry after some time."
+
+                result = {
+                    "test_id": test_case.get("id"),
+                    "category": test_case.get("category", "unknown"),
+                    "question": test_case.get("question"),
+                    "error": error_msg,
+                    "metrics": {},
+                    "overall_passed": False,
+                    "timestamp": datetime.now().isoformat()
+                }
+
+                results.append(result)
+
+                if progress_callback:
+                    progress_callback(idx + 1, len(test_cases))
+
+                continue
+
             results.append(result)
-            
+
             if progress_callback:
                 progress_callback(idx + 1, len(test_cases))
         
@@ -481,10 +513,13 @@ class UIEvaluator:
         if not eval_results:
             return {}
         
+        total_tests = len(results) if results is not None else len(self.results)
+
         summary = {
-            "total_tests": len(eval_results),
+            "total_tests": total_tests,
+            "completed_tests": len(eval_results),
+            "failed_tests": sum(1 for r in eval_results if r.get("error") or not r.get("overall_passed", False)),
             "passed_tests": sum(1 for r in eval_results if r.get("overall_passed", False)),
-            "failed_tests": sum(1 for r in eval_results if not r.get("overall_passed", True)),
             "metrics": {}
         }
         

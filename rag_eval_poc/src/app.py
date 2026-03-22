@@ -823,16 +823,31 @@ def display_evaluation_results():
         results_data = []
 
         for result in st.session_state.evaluation_results:
-            if "error" not in result:
-                results_data.append({
-                    "ID": result["test_id"],
-                    "Question": result["question"][:50] + "...",
-                    "Category": result.get("category", "N/A"),
-                    "Status": "PASS" if result["overall_passed"] else "FAIL"
-                })
+
+            if result.get("error"):
+                status = "ERROR"
+            elif result.get("overall_passed"):
+                status = "PASS"
+            else:
+                status = "FAIL"
+
+            results_data.append({
+                "ID": result.get("test_id"),
+                "Question": (
+                    result.get("question", "N/A")[:80] + "..."
+                    if result.get("question") and len(result.get("question")) > 80
+                    else result.get("question", "N/A")
+                ),
+                "Category": result.get("category", "N/A"),
+                "Status": status
+            })
 
         if results_data:
             st.dataframe(pd.DataFrame(results_data), width='stretch')
+        
+        for result in st.session_state.evaluation_results:
+            if result.get("error"):
+                st.error(f"Test {result.get('test_id')} failed: {result.get('error')}")
 
 def display_clean_dashboard():
     st.subheader("Evaluation Dashboard")
@@ -941,14 +956,30 @@ def display_clean_dashboard():
         # Table
         results_data = []
         for result in st.session_state.evaluation_results:
-            if "error" not in result:
-                results_data.append({
-                    "ID": result["test_id"],
-                    "Category": result.get("category", "N/A"),
-                    "Status": "PASS" if result["overall_passed"] else "FAIL"
-                })
+
+            if result.get("error"):
+                status = "ERROR"
+            elif result.get("overall_passed"):
+                status = "PASS"
+            else:
+                status = "FAIL"
+
+            results_data.append({
+                "ID": result.get("test_id"),
+                "Question": (
+                    result.get("question", "N/A")[:80] + "..."
+                    if result.get("question") and len(result.get("question")) > 80
+                    else result.get("question", "N/A")
+                ),
+                "Category": result.get("category", "N/A"),
+                "Status": status
+            })
 
         st.dataframe(pd.DataFrame(results_data), width='stretch')
+
+        for result in st.session_state.evaluation_results:
+            if result.get("error"):
+                st.error(f"Test {result.get('test_id')} failed: {result.get('error')}")
 
 def display_metrics_dashboard():
     """Display comprehensive metrics dashboard"""
