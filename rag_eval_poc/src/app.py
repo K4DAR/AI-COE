@@ -35,10 +35,12 @@ def apply_professional_styling():
 
 html, body, [class*="css"] {
     font-family: Inter, system-ui, -apple-system;
+    color: #e5e7eb;
 }
 
+/* FIX: dark background instead of light */
 .main {
-    background: #f6f8fb;
+    background: #0b1220;
 }
 
 
@@ -64,17 +66,19 @@ html, body, [class*="css"] {
 /* KPI CARDS */
 
 .metric-card {
-    background: white;
+    background: #111827;  /* FIX */
     padding: 22px;
     border-radius: 12px;
-    box-shadow: 0 6px 18px rgba(0,0,0,0.05);
+    box-shadow: 0 6px 18px rgba(0,0,0,0.3);
+    color: #e5e7eb;
 }
+
 .metric-bar-card {
     padding: 16px;
     border-radius: 12px;
     margin-bottom: 12px;
 
-    background: rgba(255,255,255,0.05);  /* SAFE */
+    background: rgba(255,255,255,0.05);
     color: white;
 
     border: 1px solid rgba(255,255,255,0.08);
@@ -107,13 +111,15 @@ html, body, [class*="css"] {
     opacity: 0.8;
 }
 
+
 /* CHAT WINDOW */
 
 .chat-window {
-    background: white;
+    background: #111827;  /* FIX */
+    color: #e5e7eb;
     padding: 30px;
     border-radius: 14px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.06);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.4);
     margin-top: 15px;
 }
 
@@ -121,33 +127,36 @@ html, body, [class*="css"] {
 /* USER MESSAGE */
 
 .user-msg {
-    background:#eff6ff;
+    background:#1e293b;  /* FIX */
     border-left:4px solid #2563eb;
     padding:15px;
     border-radius:8px;
     margin-bottom:10px;
+    color:#e5e7eb;
 }
 
 
 /* AI MESSAGE */
 
 .ai-msg {
-    background:#ecfdf5;
+    background:#064e3b;  /* FIX */
     border-left:4px solid #059669;
     padding:15px;
     border-radius:8px;
     margin-bottom:10px;
+    color:#d1fae5;
 }
 
 
 /* SOURCE DOC PANEL */
 
 .source-card {
-    background:white;
+    background:#111827;  /* FIX */
     border-radius:10px;
     padding:15px;
-    border:1px solid #e5e7eb;
+    border:1px solid #374151;
     margin-bottom:10px;
+    color:#e5e7eb;
 }
 
 
@@ -172,6 +181,19 @@ section[data-testid="stSidebar"] *{
 
 .stButton button:hover{
     background:#1d4ed8;
+}
+
+
+/* INPUT FIX (IMPORTANT) */
+
+.stTextInput input {
+    background-color:#111827 !important;
+    color:#ffffff !important;
+}
+
+textarea {
+    background-color:#111827 !important;
+    color:#ffffff !important;
 }
 
 </style>
@@ -266,7 +288,7 @@ def sidebar_settings():
     st.sidebar.subheader("⚙️ Settings")
 
     with st.sidebar.expander("LLM Config"):
-        temp = st.slider("Temperature", 0.0, 1.0, float(config.OPENAI_TEMPERATURE))
+        temp = st.slider("Temperature", 0.0, 1.0, float(config.TEMPERATURE))
         k = st.slider("Retriever K", 1, 10, config.RETRIEVER_K)
         st.caption(f"Temp={temp}, K={k}")
 
@@ -383,7 +405,10 @@ def display_metric_card(metric_name: str, score: float, threshold: float, passed
     col1, col2 = st.columns([3, 1])
 
     with col1:
-        st.markdown(f"**{metric_name}**")
+        if "hallucination" in name:
+            st.markdown("**Hallucination (Lower = Better)**")
+        else:
+            st.markdown(f"**{metric_name}**")
     with col2:
         st.markdown(f"**{'PASS' if passed else 'FAIL'}**")
 
@@ -719,7 +744,7 @@ def display_evaluation_results():
                 for cat, stats in summary["by_category"].items()
             ])
 
-            st.dataframe(df_category, use_container_width=True)
+            st.dataframe(df_category, width='stretch')
 
         st.write("---")
 
@@ -730,12 +755,13 @@ def display_evaluation_results():
             if "error" not in result:
                 results_data.append({
                     "ID": result["test_id"],
+                    "Question": result["question"][:50] + "...",
                     "Category": result.get("category", "N/A"),
                     "Status": "PASS" if result["overall_passed"] else "FAIL"
                 })
 
         if results_data:
-            st.dataframe(pd.DataFrame(results_data), use_container_width=True)
+            st.dataframe(pd.DataFrame(results_data), width='stretch')
 
 def display_clean_dashboard():
     st.subheader("Evaluation Dashboard")
@@ -784,11 +810,20 @@ def display_clean_dashboard():
         st.markdown("### Key Metrics")
 
         for metric_name, metric_stats in summary["metrics"].items():
+
+            score = metric_stats["avg_score"]
+
+            # FIX: correct pass logic
+            if "hallucination" in metric_name.lower():
+                passed = score < 0.3   # lower is better
+            else:
+                passed = score > 0.5   # higher is better
+
             display_metric_card(
                 metric_name,
-                metric_stats["avg_score"],
+                score,
                 0.5,
-                metric_stats["avg_score"] > 0.5
+                passed
             )
 
     # RIGHT → VISUAL
@@ -814,7 +849,7 @@ def display_clean_dashboard():
             yaxis=dict(range=[0,1])
         )
 
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
 
     st.divider()
 
@@ -833,7 +868,7 @@ def display_clean_dashboard():
                     "Status": "PASS" if result["overall_passed"] else "FAIL"
                 })
 
-        st.dataframe(pd.DataFrame(results_data), use_container_width=True)
+        st.dataframe(pd.DataFrame(results_data), width='stretch')
 
 def display_metrics_dashboard():
     """Display comprehensive metrics dashboard"""
@@ -899,11 +934,20 @@ def display_metrics_dashboard():
         st.markdown("### Key Metrics")
 
         for metric_name, metric_stats in summary["metrics"].items():
+
+            score = metric_stats["avg_score"]
+
+            # FIX: correct pass logic
+            if "hallucination" in metric_name.lower():
+                passed = score < 0.3   # lower is better
+            else:
+                passed = score > 0.5   # higher is better
+
             display_metric_card(
                 metric_name,
-                metric_stats["avg_score"],
+                score,
                 0.5,
-                metric_stats["avg_score"] > 0.5
+                passed
             )
         
     with col_right:
@@ -932,7 +976,7 @@ def display_metrics_dashboard():
             yaxis_title=""
         )
 
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
         
     # # Create pass/fail pie chart
     # col1, col2 = st.columns(2)
@@ -1046,26 +1090,80 @@ def main():
                 db_path = Path("src/chroma_db")
 
                 try:
-                    #  Step 1: Release RAG bot (IMPORTANT)
+                    # =========================
+                    # 1. HARD CLOSE BOT
+                    # =========================
                     if "bot" in st.session_state and st.session_state.bot is not None:
+
+                        bot = st.session_state.bot
+
                         try:
-                            if hasattr(st.session_state.bot, "vector_store"):
-                                st.session_state.bot.vector_store = None
-                            if hasattr(st.session_state.bot, "qa_chain"):
-                                st.session_state.bot.qa_chain = None
-                        except Exception:
+                            if hasattr(bot, "vector_store") and bot.vector_store:
+
+                                # 🔥 CRITICAL: call persist + delete collection
+                                try:
+                                    bot.vector_store.persist()
+                                except:
+                                    pass
+
+                                try:
+                                    bot.vector_store._client.reset()
+                                except:
+                                    pass
+
+                                del bot.vector_store
+
+                        except Exception as e:
+                            print("Vector store cleanup error:", e)
+
+                        try:
+                            if hasattr(bot, "qa_chain"):
+                                del bot.qa_chain
+                        except:
                             pass
 
-                    #  Step 2: Clear session references
+                    # =========================
+                    # 2. CLEAR SESSION
+                    # =========================
                     st.session_state.bot = None
                     st.session_state.bot_initialized = False
 
-                    #  Step 3: Force garbage collection
+                    # =========================
+                    # 3. FORCE MEMORY RELEASE
+                    # =========================
+                    import gc
                     gc.collect()
 
-                    #  Step 4: Delete DB
-                    if db_path.exists():
-                        shutil.rmtree(db_path)
+                    # 🔥 IMPORTANT: multiple waits
+                    time.sleep(2)
+
+                    # =========================
+                    # 4. FORCE UNLOCK (WINDOWS FIX)
+                    # =========================
+                    import os
+
+                    for root, dirs, files in os.walk(db_path, topdown=False):
+                        for name in files:
+                            file_path = os.path.join(root, name)
+                            try:
+                                os.chmod(file_path, 0o777)
+                            except:
+                                pass
+
+                    # =========================
+                    # 5. DELETE WITH RETRY
+                    # =========================
+                    import shutil
+
+                    for i in range(5):
+                        try:
+                            if db_path.exists():
+                                shutil.rmtree(db_path)
+                            break
+                        except Exception as e:
+                            time.sleep(1)
+                            if i == 4:
+                                raise e
 
                     st.success("✓ Vector database reset successfully")
 

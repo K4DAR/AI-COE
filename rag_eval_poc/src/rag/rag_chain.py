@@ -24,7 +24,7 @@ def get_llm():
         from langchain_openai import ChatOpenAI
         return ChatOpenAI(
             model=config.OPENAI_MODEL,
-            temperature=config.OPENAI_TEMPERATURE,
+            temperature=config.TEMPERATURE,
             api_key=config.OPENAI_API_KEY,
             max_retries=3
         )
@@ -34,7 +34,7 @@ def get_llm():
         from langchain_groq import ChatGroq
         return ChatGroq(
             model=config.GROQ_MODEL,
-            temperature=config.OPENAI_TEMPERATURE,
+            temperature=config.TEMPERATURE,
             api_key=config.API_KEY,
             max_retries=3
         )
@@ -45,7 +45,7 @@ def get_llm():
         return ChatOllama(
             model=config.OLLAMA_MODEL,
             base_url=config.OLLAMA_BASE_URL,
-            temperature=config.OPENAI_TEMPERATURE,
+            temperature=config.TEMPERATURE,
             top_p=0.9
         )
     
