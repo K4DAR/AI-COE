@@ -181,22 +181,44 @@ class EvaluationMetrics:
 
             parsed = json.loads(json_match.group())
 
+            # 🔥 Get dynamic thresholds (from UI or fallback)
+            try:
+                import streamlit as st
+                t = st.session_state.get("eval_profile", {
+                    "faithfulness": 0.7,
+                    "relevancy": 0.7,
+                    "recall": 0.6,
+                    "hallucination": 0.0
+                })
+            except:
+                # fallback if not running in Streamlit
+                t = {
+                    "faithfulness": 0.7,
+                    "relevancy": 0.7,
+                    "recall": 0.6,
+                    "hallucination": 0.0
+                }
+
             metrics = {
                 "Hallucination": {
                     "score": parsed["hallucination"],
-                    "passed": parsed["hallucination"] == 0.0
+                    "threshold": t["hallucination"],
+                    "passed": parsed["hallucination"] <= t["hallucination"]
                 },
                 "Faithfulness": {
                     "score": parsed["faithfulness"],
-                    "passed": parsed["faithfulness"] >= 0.7
+                    "threshold": t["faithfulness"],
+                    "passed": parsed["faithfulness"] >= t["faithfulness"]
                 },
                 "AnswerRelevancy": {
                     "score": parsed["answer_relevancy"],
-                    "passed": parsed["answer_relevancy"] >= 0.7
+                    "threshold": t["relevancy"],
+                    "passed": parsed["answer_relevancy"] >= t["relevancy"]
                 },
                 "ContextualRecall": {
                     "score": parsed["contextual_recall"],
-                    "passed": parsed["contextual_recall"] >= 0.6
+                    "threshold": t["recall"],
+                    "passed": parsed["contextual_recall"] >= t["recall"]
                 }
             }
 

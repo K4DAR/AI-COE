@@ -234,6 +234,37 @@ def initialize_session():
     if "evaluation_loaded" not in st.session_state:
         st.session_state.evaluation_loaded = False
 
+    # =========================
+    # EVALUATION PROFILES (GLOBAL)
+    # =========================
+    if "eval_profiles" not in st.session_state:
+        st.session_state.eval_profiles = {
+            "poc": {
+                "faithfulness": 0.70,
+                "relevancy": 0.75,
+                "recall": 0.70,
+                "hallucination": 0.25
+            },
+            "strong": {
+                "faithfulness": 0.85,
+                "relevancy": 0.85,
+                "recall": 0.80,
+                "hallucination": 0.15
+            },
+            "production": {
+                "faithfulness": 0.90,
+                "relevancy": 0.90,
+                "recall": 0.90,
+                "hallucination": 0.05
+            }
+        }
+
+    # =========================
+    # DEFAULT PROFILE
+    # =========================
+    if "eval_profile" not in st.session_state:
+        st.session_state.eval_profile = st.session_state.eval_profiles["poc"]
+
 # =========================================================
 # HEADER
 # =========================================================
@@ -381,25 +412,13 @@ def display_metric_card(metric_name: str, score: float, threshold: float, passed
 
     # Normalize metric name
     name = metric_name.lower()
+    # Use backend-evaluated values ONLY (no recomputation)
 
-    #  Special logic for hallucination
     if "hallucination" in name:
-        # High = bad → red increases with score
-        if score > 0.7:
-            color = "#ef4444"   # strong red
-        elif score > 0.3:
-            color = "#f59e0b"   # orange warning
-        else:
-            color = "#3b82f6"   # blue (good low hallucination)
-
+        # lower is better
+        color = "#ef4444" if score > threshold else "#3b82f6"
     else:
-        # Normal metrics (high = good)
-        if score > 0.7:
-            color = "#10b981"   # green
-        elif score > 0.4:
-            color = "#f59e0b"   # orange
-        else:
-            color = "#ef4444"   # red
+        color = "#10b981" if passed else "#ef4444"
 
     # Layout
     col1, col2 = st.columns([3, 1])
@@ -434,7 +453,7 @@ def display_metric_card(metric_name: str, score: float, threshold: float, passed
         unsafe_allow_html=True
     )
 
-    st.caption(f"Score: {score:.2f} / 1.00")
+    st.caption(f"Score: {score:.2f} | Threshold: {threshold:.2f}")
 
 
 def display_evaluation_test_cases():
@@ -715,12 +734,27 @@ def display_evaluation_results():
         score = metric_stats["avg_score"]
 
         # reuse your clean progress UI
-        display_metric_card(
-            metric_name,
-            score,
-            0.5,
-            score > 0.5
-        )
+        t = st.session_state.eval_profile
+
+        name = metric_name.lower()
+
+        if "hallucination" in name:
+            threshold = t["hallucination"]
+            passed = score <= threshold
+        elif "faithfulness" in name:
+            threshold = t["faithfulness"]
+            passed = score >= threshold
+        elif "relevancy" in name:
+            threshold = t["relevancy"]
+            passed = score >= threshold
+        elif "recall" in name:
+            threshold = t["recall"]
+            passed = score >= threshold
+        else:
+            threshold = 0.5
+            passed = score >= 0.5
+
+        display_metric_card(metric_name, score, threshold, passed)
 
     st.divider()
 
@@ -814,17 +848,26 @@ def display_clean_dashboard():
             score = metric_stats["avg_score"]
 
             # FIX: correct pass logic
-            if "hallucination" in metric_name.lower():
-                passed = score < 0.3   # lower is better
-            else:
-                passed = score > 0.5   # higher is better
+            t = st.session_state.eval_profile
+            name = metric_name.lower()
 
-            display_metric_card(
-                metric_name,
-                score,
-                0.5,
-                passed
-            )
+            if "hallucination" in name:
+                threshold = t["hallucination"]
+                passed = score <= threshold
+            elif "faithfulness" in name:
+                threshold = t["faithfulness"]
+                passed = score >= threshold
+            elif "relevancy" in name:
+                threshold = t["relevancy"]
+                passed = score >= threshold
+            elif "recall" in name:
+                threshold = t["recall"]
+                passed = score >= threshold
+            else:
+                threshold = 0.5
+                passed = score >= 0.5
+
+            display_metric_card(metric_name, score, threshold, passed)
 
     # RIGHT → VISUAL
     with col_right:
@@ -938,17 +981,26 @@ def display_metrics_dashboard():
             score = metric_stats["avg_score"]
 
             # FIX: correct pass logic
-            if "hallucination" in metric_name.lower():
-                passed = score < 0.3   # lower is better
-            else:
-                passed = score > 0.5   # higher is better
+            t = st.session_state.eval_profile
+            name = metric_name.lower()
 
-            display_metric_card(
-                metric_name,
-                score,
-                0.5,
-                passed
-            )
+            if "hallucination" in name:
+                threshold = t["hallucination"]
+                passed = score <= threshold
+            elif "faithfulness" in name:
+                threshold = t["faithfulness"]
+                passed = score >= threshold
+            elif "relevancy" in name:
+                threshold = t["relevancy"]
+                passed = score >= threshold
+            elif "recall" in name:
+                threshold = t["recall"]
+                passed = score >= threshold
+            else:
+                threshold = 0.5
+                passed = score >= 0.5
+
+            display_metric_card(metric_name, score, threshold, passed)
         
     with col_right:
 
@@ -1193,6 +1245,14 @@ def main():
     # ========================================================
 
     with tab_evaluation:
+        st.markdown("### Evaluation Mode")
+
+        selected_mode = st.selectbox(
+            "Select Evaluation Standard",
+            ["poc", "strong", "production"]
+        )
+
+        st.session_state.eval_profile = st.session_state.eval_profiles[selected_mode]
 
         if not st.session_state.bot_initialized:
             st.warning("⚠ Initialize RAG bot in the Chat tab first!")
