@@ -510,10 +510,6 @@ def display_evaluation_test_cases():
             except Exception as e:
                 st.error(f"✗ Error loading test cases: {str(e)}")
     
-    with col2:
-        if st.session_state.evaluation_loaded:
-            st.success(f"✓ {len(st.session_state.evaluation_test_cases)} test cases loaded")
-    
     # Show test case breakdown
     if st.session_state.evaluation_test_cases:
         st.write("---")
@@ -1110,8 +1106,6 @@ def main():
 
     display_header()
 
-    # display_kpis()
-
     # Create tabs for Chat and Evaluation
     tab_chat, tab_analytics, tab_evaluation = st.tabs(["Chat", "Analytics", "Evaluation"])
 
@@ -1123,7 +1117,7 @@ def main():
 
         with col_side:
 
-            st.title("AI Control Center")
+            st.title("Control Center")
 
             st.write("---")
 
