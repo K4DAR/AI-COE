@@ -55,8 +55,7 @@ class Config:
 
     # Evaluation Configuration
     EVAL_TEST_CASES_PATH = EVALUATION_DIR / "test_cases.yaml"
-    MIN_CONFIDENCE_SCORE = float(os.getenv("MIN_CONFIDENCE_SCORE"))
-
+    
     @staticmethod
     def validate():
         """Validate configuration"""

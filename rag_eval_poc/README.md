@@ -2,7 +2,7 @@
 
 A hands-on learning project for evaluating Retrieval-Augmented Generation (RAG) systems using structured LLM evaluation techniques. This POC demonstrates how to systematically measure quality issues like hallucination, unfaithfulness, and answer irrelevance in GenAI applications.
 
-## 🎯 Project Objective
+##  Project Objective
 
 **Key Question:** Does structured LLM evaluation actually catch problems that manual testing doesn't?
 
@@ -17,7 +17,7 @@ This project answers that question by:
 
 ---
 
-## 📋 Table of Contents
+##  Table of Contents
 
 - [Features](#features)
 - [Quick Start](#quick-start)
@@ -36,7 +36,7 @@ This project answers that question by:
 
 ---
 
-## ✨ Features
+##  Features
 
 ### Core Functionality
 - **RAG Pipeline**: Documents → Chunking → Vector Embeddings → ChromaDB → Retrieval + LLM Generation
@@ -52,7 +52,7 @@ This project answers that question by:
 
 ---
 
-## 🚀 Quick Start
+##  Quick Start
 
 ### Prerequisites
 - Python 3.8+
@@ -105,7 +105,7 @@ python tests/evaluation/run_eval.py
 
 ---
 
-## 📦 Installation
+##  Installation
 
 ### Full Setup with Virtual Environment
 
@@ -171,7 +171,7 @@ VECTOR_STORE_TYPE = "chroma"  # Embedding storage backend
 
 ---
 
-## 📁 Project Structure
+##  Project Structure
 
 ```
 rag_eval_poc/
@@ -223,7 +223,7 @@ rag_eval_poc/
 
 ---
 
-## 🎮 Usage
+##  Usage
 
 ### Interactive Web UI (Recommended)
 
@@ -269,7 +269,7 @@ python tests/evaluation/groq_model.py
 
 ---
 
-## 🎯 Evaluation Metrics
+##  Evaluation Metrics
 
 This project uses **4 core DeepEval metrics**:
 
@@ -295,7 +295,7 @@ This project uses **4 core DeepEval metrics**:
 
 ---
 
-## 🧪 Test Cases
+##  Test Cases
 
 ### Test Case Format (YAML)
 
@@ -329,7 +329,7 @@ Test cases are defined in [tests/evaluation/test_cases.yaml](tests/evaluation/te
 
 ---
 
-## 📊 Results & Analysis
+##  Results & Analysis
 
 ### Result Files
 
@@ -366,7 +366,7 @@ print(f"\nFailed Tests: {len(failed_tests)}/{len(results['tests'])}")
 
 ---
 
-## 🏗️ Architecture
+##  Architecture
 
 ### RAG Pipeline Flow
 
@@ -407,7 +407,7 @@ Results & Visualization
 
 ---
 
-## 🤖 Supported LLM Providers
+##  Supported LLM Providers
 
 ### Groq (Recommended - Free)
 
@@ -439,7 +439,7 @@ Change `LLM_PROVIDER` in `.env` and restart the application. All components auto
 
 ---
 
-## 🛠️ Troubleshooting
+##  Troubleshooting
 
 ### Common Issues
 
@@ -487,7 +487,7 @@ pip install -r requirements.txt
 
 ---
 
-## 📚 Learning Resources
+##  Learning Resources
 
 ### Background Reading
 Before diving in, understand these concepts:
@@ -514,7 +514,7 @@ See **GenAI Concepts Glossary (AICOE-11)** for beginner-friendly definitions.
 
 ---
 
-## 🔄 Project Workflow
+##  Project Workflow
 
 ### Step-by-Step Guide
 
@@ -549,7 +549,7 @@ See **GenAI Concepts Glossary (AICOE-11)** for beginner-friendly definitions.
 
 ---
 
-## 🤝 Contributing
+##  Contributing
 
 This is a POC for learning purposes. Contributions welcome!
 
@@ -575,13 +575,13 @@ python -m pytest tests/  # When tests are added
 
 ---
 
-## 📝 License
+##  License
 
 [Specify your license here]
 
 ---
 
-## 📞 Support & Questions
+##  Support & Questions
 
 - **Issues**: Create an issue on GitHub
 - **Questions**: Contact the AICOE team
@@ -589,7 +589,7 @@ python -m pytest tests/  # When tests are added
 
 ---
 
-## 🎓 Key Takeaways
+##  Key Takeaways
 
 By completing this POC, you'll understand:
 

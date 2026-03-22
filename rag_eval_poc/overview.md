@@ -670,8 +670,8 @@ GROQ_MODEL=llama-3.3-70b-versatile
 
 ### Why .env?
 - 🔒 **Security**: API keys never in version control
-- 🔄 **Flexibility**: Easy to switch between environments
-- 🚀 **Deployment**: Different keys for dev/test/prod
+-  **Flexibility**: Easy to switch between environments
+-  **Deployment**: Different keys for dev/test/prod
 -  **Best Practice**: Industry standard
 
 ### config/.streamlit/config.toml
