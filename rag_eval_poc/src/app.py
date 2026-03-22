@@ -146,7 +146,40 @@ html, body, [class*="css"] {
     margin-bottom:10px;
     color:#d1fae5;
 }
+/* CHAT ROW */
+.chat-row {
+    display: flex;
+    width: 100%;
+    margin-bottom: 10px;
+}
 
+/* USER (RIGHT) */
+.user-row {
+    justify-content: flex-end;
+}
+
+.user-msg {
+    background:#1e293b;
+    border-left:4px solid #2563eb;
+    padding:15px;
+    border-radius:12px;
+    color:#e5e7eb;
+    max-width: 65%;
+}
+
+/* AI (LEFT) */
+.ai-row {
+    justify-content: flex-start;
+}
+
+.ai-msg {
+    background:#064e3b;
+    border-left:4px solid #059669;
+    padding:15px;
+    border-radius:12px;
+    color:#d1fae5;
+    max-width: 65%;
+}
 
 /* SOURCE DOC PANEL */
 
@@ -358,19 +391,23 @@ def display_chat():
 
         if msg["role"] == "user":
             st.markdown(f"""
-            <div class="user-msg">
-            <b>You</b><br>{msg["content"]}
+            <div class="chat-row user-row">
+                <div class="user-msg">
+                    <b>You</b><br>{msg["content"]}
+                </div>
             </div>
             """, unsafe_allow_html=True)
 
         elif msg["role"] == "assistant":
             st.markdown(f"""
-            <div class="ai-msg">
-            <b>AI</b><br>{msg["content"]}
+            <div class="chat-row ai-row">
+                <div class="ai-msg">
+                    <b>Rag Bot</b><br>{msg["content"]}
+                </div>
             </div>
             """, unsafe_allow_html=True)
 
-            #  Show sources inline
+            # Sources (keep as is)
             if msg.get("sources"):
                 with st.expander("Sources"):
                     for doc in msg["sources"][:3]:

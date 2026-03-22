@@ -82,7 +82,7 @@ Create a `.env` file in the `config/` folder:
 # Choose your LLM provider (groq, openai)
 LLM_PROVIDER=groq
 API_KEY=your_API_KEY_here
-GROQ_MODEL=llama-3.3-70b-versatile
+LLM_MODEL=llama-3.3-70b-versatile
 
 # OR for OpenAI:
 # OPENAI_API_KEY=your_openai_key_here
@@ -145,7 +145,7 @@ Set these in `config/.env`:
 # LLM Provider
 LLM_PROVIDER=groq                           # groq, openai, anthropic
 API_KEY=your_key_here                  # For Groq (free)
-GROQ_MODEL=llama-3.3-70b-versatile          # Groq model selection
+LLM_MODEL=llama-3.3-70b-versatile          # Groq model selection
 
 # OpenAI (alternative)
 OPENAI_API_KEY=your_key_here                # For OpenAI API
@@ -212,7 +212,7 @@ rag_eval_poc/
 │   ├── evaluation/
 │   │   ├── test_cases.yaml            # 20 test questions (YAML format)
 │   │   ├── run_eval.py                # Evaluation runner script
-│   │   └── groq_model.py              # Groq-specific evaluation
+│   │   └── LLM_MODEL.py              # Groq-specific evaluation
 │   │
 │   └── results/
 │       ├── evaluation_report_1.md     # Markdown evaluation reports
@@ -264,7 +264,7 @@ curl -X POST http://localhost:8000/ask \
 python tests/evaluation/run_eval.py
 
 # Run with Groq backend
-python tests/evaluation/groq_model.py
+python tests/evaluation/LLM_MODEL.py
 ```
 
 ---
@@ -419,7 +419,7 @@ Results & Visualization
 ```env
 LLM_PROVIDER=groq
 API_KEY=your_key
-GROQ_MODEL=llama-3.3-70b-versatile
+LLM_MODEL=llama-3.3-70b-versatile
 ```
 
 ### OpenAI

@@ -33,7 +33,7 @@ def get_llm():
         logger.debug("Using Groq LLM")
         from langchain_groq import ChatGroq
         return ChatGroq(
-            model=config.GROQ_MODEL,
+            model=config.LLM_MODEL,
             temperature=config.TEMPERATURE,
             api_key=config.API_KEY,
             max_retries=3

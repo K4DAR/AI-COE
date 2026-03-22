@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import Dict, List, Any
 from datetime import datetime
 import time
-from groq_model import GroqModel
+from LLM_MODEL import GroqModel
 from dotenv import load_dotenv
 
 # Ensure environment is loaded before importing config
@@ -91,7 +91,7 @@ class RAGEvaluator:
         self._setup_rag_bot()
         self.groq_llm = GroqModel(
             api_key=os.getenv("API_KEY") or config.API_KEY,
-            model_name=os.getenv("GROQ_MODEL") or config.GROQ_MODEL
+            model_name=os.getenv("LLM_MODEL") or config.LLM_MODEL
         )
     
     def _setup_rag_bot(self):

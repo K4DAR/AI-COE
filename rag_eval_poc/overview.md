@@ -212,7 +212,7 @@ rag_eval_poc/
     └── evaluation/                    # Structured evaluation tests
         ├── test_cases.yaml            # Test questions & expected answers
         ├── run_eval.py                # Script to run DeepEval evaluations
-        ├── groq_model.py              # Groq LLM wrapper for DeepEval
+        ├── LLM_MODEL.py              # Groq LLM wrapper for DeepEval
         └── results/                   # Evaluation results output
             ├── evaluation_report_1.md # Markdown report of results
             ├── evaluation_results_1.json # JSON results (machine-readable)
@@ -240,7 +240,7 @@ class Config:
     # LLM Provider
     LLM_PROVIDER = "groq"
     API_KEY = os.getenv("API_KEY")
-    GROQ_MODEL = "llama-3.3-70b-versatile"
+    LLM_MODEL = "llama-3.3-70b-versatile"
     
     # Document Processing
     PDF_CHUNK_SIZE = 800              # Characters per chunk
@@ -265,7 +265,7 @@ Located in `config/.env`:
 ```
 LLM_PROVIDER=groq
 API_KEY=your_key_here
-GROQ_MODEL=llama-3.3-70b-versatile
+LLM_MODEL=llama-3.3-70b-versatile
 ```
 
 ---
@@ -411,7 +411,7 @@ Orchestrates the entire RAG pipeline: retrieval → context → prompt → gener
 ```python
 def get_llm():
     if provider == "groq":
-        return ChatGroq(model=config.GROQ_MODEL, api_key=config.API_KEY)
+        return ChatGroq(model=config.LLM_MODEL, api_key=config.API_KEY)
 ```
 - Loads LLM based on configured provider
 - Lazy-loads to avoid unnecessary API calls
@@ -665,7 +665,7 @@ LLM_PROVIDER=groq
 # GROQ CONFIGURATION (FREE!)
 # ======================================
 API_KEY=gsk_xxxxxxxxxxxxxxxxxxxx
-GROQ_MODEL=llama-3.3-70b-versatile
+LLM_MODEL=llama-3.3-70b-versatile
 ```
 
 ### Why .env?
